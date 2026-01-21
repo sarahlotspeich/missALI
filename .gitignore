@@ -4,3 +4,6 @@
 missALI.Rproj
 
 data/deidentified_ali_hospitalizations.csv
+.Rproj.user
+
+.Rbuildignore
