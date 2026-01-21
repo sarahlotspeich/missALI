@@ -2,7 +2,7 @@
 ALI
 ================
 
-## Package Installation
+## Installation
 
 Installation of the `missALI` package from GitHub requires the
 [`devtools`](https://www.r-project.org/nosvn/pandoc/devtools.html)
@@ -18,12 +18,16 @@ devtools::install_github(repo = "sarahlotspeich/missALI")
 library(missALI)
 ```
 
-## Illustrative Example
+## Functionality
 
-``` r
-# Read in data on hospitalizations (suppressed for privacy)
-hosp_dat = read.csv("~/Documents/missALI_prediction/data/deidentified_ali_hospitalizations.csv")
-```
+Using the dataset `hosp_dat` for illustration, the `missALI` package
+contains functions to fit prediction models with…
+
+- **Two types of outcome:** binary (logistic regression) or count
+  (Poisson regression),
+- **Two types of ALI components:** binary (healthy/unhealthy) or
+  numeric, and
+- **Five approaches to handle missing components:**
 
 ## Modeling Binary Outcomes
 
