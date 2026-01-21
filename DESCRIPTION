@@ -1,0 +1,18 @@
+Package: missALI
+Type: Package
+Title: Predicts hospitalization from ALI using statistical modeling with missing data corrections
+Version: 0.1.0
+Authors@R: c(
+    person(
+      "Sarah", "Lotspeich",
+      email = "lotspes@wfu.edu",
+      role = c("aut", "cre")
+    )
+  )
+Description: Implements logistic and Poisson regression models to predict hospitalization from
+    the allostatic load index (ALI). Offers various approaches to handling missing ALI components, 
+    including missingness indicators, multiple imputation, and best/worst case scenario.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.3.2
