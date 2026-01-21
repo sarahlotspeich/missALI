@@ -19,7 +19,7 @@ case_approach(outcome, covar = NULL, data, family, best = TRUE)
 \item{best}{if \code{TRUE} (the default), then all missing ALI components are replaced with \code{"healthy"}; otherwise, they are replaced with \code{"unhealthy"}.}
 }
 \value{
-\item{data}{dataframe with the factor versions of the ALI components (with missingness as a level).}
+\item{data}{dataframe with the factor versions of the ALI components (with missing values replaced by best/worst case scenario).}
 \item{fit}{fitted regression model object.}
 }
 \description{
