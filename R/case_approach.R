@@ -7,7 +7,7 @@
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param best if \code{TRUE} (the default), then all missing ALI components are replaced with \code{"healthy"}; otherwise, they are replaced with \code{"unhealthy"}.
 #' @return
-#' \item{data}{dataframe with the factor versions of the ALI components (with missingness as a level).}
+#' \item{data}{dataframe with the factor versions of the ALI components (with missing values replaced by best/worst case scenario).}
 #' \item{fit}{fitted regression model object.}
 #' @export
 #' @importFrom dplyr mutate_at
