@@ -7,3 +7,5 @@ data/deidentified_ali_hospitalizations.csv
 .Rproj.user
 
 .Rbuildignore
+
+README.Rmd
