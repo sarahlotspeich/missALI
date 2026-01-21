@@ -2,6 +2,12 @@
 
 export(case_approach)
 export(miss_ind_approach)
+export(num_miss_approach)
+importFrom(dplyr,group_by)
+importFrom(dplyr,left_join)
 importFrom(dplyr,mutate)
 importFrom(dplyr,mutate_at)
+importFrom(dplyr,select)
+importFrom(dplyr,summarize)
+importFrom(tidyr,gather)
 importFrom(tidyr,replace_na)
