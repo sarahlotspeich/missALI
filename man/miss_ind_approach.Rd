@@ -14,7 +14,7 @@ miss_ind_approach(outcome, covar = NULL, data, family)
 
 \item{data}{dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.}
 
-\item{family}{description of the error distribution and link function to be used in the model, to be passed to \texttt{glm()}.}
+\item{family}{description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.}
 }
 \value{
 \item{data}{dataframe with the factor versions of the ALI components (with missingness as a level).}

@@ -4,7 +4,7 @@
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
-#' @param family description of the error distribution and link function to be used in the model, to be passed to \texttt{glm()}.
+#' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @return
 #' \item{data}{dataframe with the factor versions of the ALI components (with missingness as a level).}
 #' \item{fit}{fitted regression model object.}
