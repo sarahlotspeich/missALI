@@ -17,17 +17,15 @@ cc_prop_approach = function(outcome, covar = NULL, data, family) {
                    "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
 
   # Summarize by patient and count numbers unhealthy and missing
-  sum_data = suppressMessages(
-    hosp_dat |>
-      select(PAT_MRN_ID, all_of(bin_ALI_comp)) |>
-      gather(key = "COMP", value = "VAL", -1) |>
-      group_by(PAT_MRN_ID, .inform = FALSE) |>
-      summarize(PROP_UNHEALTHY = mean(VAL == 1, na.rm = TRUE))
-  )
+  sum_data = hosp_dat |>
+    select(PAT_MRN_ID, all_of(bin_ALI_comp)) |>
+    gather(key = "COMP", value = "VAL", -1) |>
+    group_by(PAT_MRN_ID, .inform = FALSE) |>
+    summarize(PROP_UNHEALTHY = mean(VAL == 1, na.rm = TRUE))
 
   # Merge it back into full patient data
   data = data |>
-    left_join(sum_data)
+    left_join(sum_data, .inform = FALSE)
 
   # Fit the model of interest
   if (!is.null(covar)) {
