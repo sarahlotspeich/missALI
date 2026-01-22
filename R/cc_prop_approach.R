@@ -21,7 +21,7 @@ cc_prop_approach = function(outcome, covar = NULL, data, family) {
     hosp_dat |>
       select(PAT_MRN_ID, all_of(bin_ALI_comp)) |>
       gather(key = "COMP", value = "VAL", -1) |>
-      group_by(PAT_MRN_ID) |>
+      group_by(PAT_MRN_ID, .inform = FALSE) |>
       summarize(PROP_UNHEALTHY = mean(VAL == 1, na.rm = TRUE))
   )
 
