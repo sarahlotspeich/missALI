@@ -25,7 +25,7 @@ cc_prop_approach = function(outcome, covar = NULL, data, family) {
 
   # Merge it back into full patient data
   data = data |>
-    left_join(sum_data, .inform = FALSE)
+    left_join(sum_data, by = "PAT_MRN_ID")
 
   # Fit the model of interest
   if (!is.null(covar)) {
