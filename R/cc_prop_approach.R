@@ -28,15 +28,9 @@ cc_prop_approach = function(outcome, covar = NULL, data, family) {
     left_join(sum_data, by = "PAT_MRN_ID")
 
   # Fit the model of interest
-  if (!is.null(covar)) {
-    fit_prop = glm(as.formula(paste(outcome, "~ PROP_UNHEALTHY + ", paste(covar, collapse = "+"))),
-                   family = family,
-                   data = data)
-  } else {
-    fit_prop = glm(as.formula(paste(outcome, "~ PROP_UNHEALTHY")),
-                   family = family,
-                   data = data)
-  }
+  fit_prop = glm(formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", covar), collapse = "+"))),
+                 family = family,
+                 data = data)
 
   # Return list with the data and model
   return(list(data = data,
