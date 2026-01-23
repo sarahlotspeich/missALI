@@ -109,6 +109,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
     vw = 1 / m * colSums(per_imp_vars) #### within-imputation variance
     vb = (1 + 1 / m) * colSums((per_imp_coeff - beta_pooled_long) ^ 2) / (m - 1) #### between-imputation variance
     vt = vw + vb #### total variance
+    se_beta_pooled = sqrt(vt) #### standard errors
     ### Calculate degrees of freedom
     lambda = ((1 + 1 / m) * vb) / vt       # fraction missing information
     df_rubin = (m - 1) / (lambda ^ 2)         # Rubin df
