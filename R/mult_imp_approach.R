@@ -74,7 +74,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                       data = imp_dat_b,
                                       family = family)
         #### Fit the model
-        fit_imp = imp_dat_b$fit
+        imp_fit_b = imp_dat_b$fit
       } else if (post_imputation == "miss_ind") {
         #### Create missingness indicators for remaining, unimputed values
         imp_dat_b = miss_ind_approach(outcome = outcome,
@@ -82,14 +82,14 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                       data = imp_dat_b,
                                       family = family)
         #### Fit the model
-        fit_imp = imp_dat_b$fit
+        imp_fit_b = imp_dat_b$fit
       } else if (post_imputation == "none") {
         #### Convert imputed numeric components --> binary
         imp_dat_b = create_bin_components(data = imp_dat_b)
         #### Fit the model
-        fit_imp = glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"))),
-                      family = family,
-                      data = imp_dat_b)
+        imp_fit_b = glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"))),
+                        family = family,
+                        data = imp_dat_b)
       }
       ### Save its coefficients to the matrix
       per_imp_coeff[b,] = imp_fit_b$coefficients
