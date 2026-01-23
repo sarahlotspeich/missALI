@@ -47,7 +47,9 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
       p = length(covar) + 2 ### number of coefficients = covar + int + prop
     } else if (post_imputation == "num_miss") {
       p = length(covar) + 3 ### number of coefficients = covar + int + num_ali + num_miss
-    } else if (post_imputation == "none" || post_imputation == "miss_ind") {
+    } else if (post_imputation == "none") {
+      p = length(covar) + lenth(ALI_comp_excl) + 1 ### number of coefficients = covar + int + 8 comp
+    } else if (post_imputation == "miss_ind") {
       p = length(covar) + 11 ### number of coefficients = covar + int + 10 comp
     }
     per_imp_coeff = matrix(nrow = m, ncol = p)
