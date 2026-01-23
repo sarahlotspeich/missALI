@@ -12,7 +12,7 @@
 #' \item{data}{multiple imputed dataset (mids) object, returned by the mice function}
 #' \item{fit}{fitted regression model object.}
 #' @export
-#' @importFrom mice mice pool
+#' @importFrom mice mice pool complete
 mult_imp_approach = function(outcome, covar = NULL, data, family, components = "binary", m = 100, post_imputation = "none") {
   # Setup
   ## Initialize names with binary components
