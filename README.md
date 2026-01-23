@@ -80,11 +80,16 @@ function in R.
 For a count outcome, we let `family = "poisson"` in all of the
 situations that follow.
 
-## Missing Data Approaches: Binary ALI Components
+## Using Different Missing Data Approaches
 
 Each of the following missing data approaches is demonstrated for the
 binary outcome, but can be applied with count outcomes instead by
 replacing the `outcome` and `family` arguments as outlined above.
+
+Most of the missing data approaches are specifically for when we use the
+**binary** versions of the ALI components, rather than the numeric ones.
+However, imputation can also be done on the original **numeric**
+measurements from which the ALI components were derived.
 
 #### Missingness Indicators
 
@@ -165,78 +170,18 @@ mod_log_ind$fit |>
     ## 
     ## Number of Fisher Scoring iterations: 14
 
-#### Best/Worst Case Scenario
+The resulting `mod_log_ind` contains two named slots.
 
-For each of the 10 ALI components, we can assume that the missing values
-would have been healthy (for the best case scenario) or unhealthy (for
-the worst case scenario). Then, we fit the model using the original
-2-level categorical variable (unhealthy/healthy) for each component,
-further controlling for age and sex.
+1.  If you call `mod_log_ind$data`, you get the `hosp_dat` object back
+    *but* with the missingness indicators applied to the 10 ALI
+    components. (The data used to fit the model.)
+2.  If you call `mod_log_ind$fit`, you get the `glm` fitted model
+    object, which you can then use with the usual functions like
+    `coefficients()` and `summary()`.
 
-``` r
-# Replace missing ALI components with "healthy" (the best case scenario)
-## and fit a model with each component separately as predictors (+ other covariates)
-mod_log_best = case_approach(outcome = "ANY_ADMIT", 
-                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                             data = hosp_dat, 
-                             family = "binomial", 
-                             best = TRUE) 
-
-# View the fitted model coefficients
-mod_log_best$fit |> 
-  coefficients()
-```
-
-    ##      (Intercept)              A1C              ALB              BMI 
-    ##     -3.366601915      0.460332566      0.847036446      0.362583697 
-    ##             CHOL              CRP          CREAT_C             HCST 
-    ##     -0.240001163      1.387055520     14.166295243               NA 
-    ##             TRIG     BP_DIASTOLIC      BP_SYSTOLIC          SEXMale 
-    ##      0.115405268     -0.081500517      0.108105401     -0.003764998 
-    ## AGE_AT_ENCOUNTER 
-    ##      0.022611414
-
-``` r
-# View the fitted model summary
-mod_log_best$fit |> 
-  summary()
-```
-
-    ## 
-    ## Call:
-    ## glm(formula = as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, 
-    ##     covar), collapse = "+"))), family = family, data = data)
-    ## 
-    ## Coefficients: (1 not defined because of singularities)
-    ##                    Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)       -3.366602   0.389632  -8.640  < 2e-16 ***
-    ## A1C                0.460333   0.224398   2.051  0.04023 *  
-    ## ALB                0.847036   0.306851   2.760  0.00577 ** 
-    ## BMI                0.362584   0.167648   2.163  0.03056 *  
-    ## CHOL              -0.240001   0.191880  -1.251  0.21101    
-    ## CRP                1.387056   0.567750   2.443  0.01456 *  
-    ## CREAT_C           14.166295 535.411237   0.026  0.97889    
-    ## HCST                     NA         NA      NA       NA    
-    ## TRIG               0.115405   0.188853   0.611  0.54114    
-    ## BP_DIASTOLIC      -0.081501   0.366639  -0.222  0.82409    
-    ## BP_SYSTOLIC        0.108105   0.239999   0.450  0.65239    
-    ## SEXMale           -0.003765   0.166566  -0.023  0.98197    
-    ## AGE_AT_ENCOUNTER   0.022611   0.006791   3.329  0.00087 ***
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-    ## 
-    ## (Dispersion parameter for binomial family taken to be 1)
-    ## 
-    ##     Null deviance: 1046.17  on 999  degrees of freedom
-    ## Residual deviance:  980.13  on 988  degrees of freedom
-    ## AIC: 1004.1
-    ## 
-    ## Number of Fisher Scoring iterations: 12
-
-The code above fits the model for the “best” case scenario. To instead
-fit the model for the “worst” case scenario, rather than best, simply
-switch the last argument in the call to the `case_approach()` function
-to be `best = FALSE` instead.
+All of the approach functions return a list with these two slots! For
+simplicity, only code fitting models with the following approaches is
+shown below.
 
 #### Sum of Missingness Indicators
 
@@ -257,44 +202,46 @@ mod_log_num = num_miss_approach(outcome = "ANY_ADMIT",
                                 family = "binomial") 
 ```
 
-    ## Joining with `by = join_by(PAT_MRN_ID)`
+#### Proportion of Non-Missing
+
+Another way to adapt the original ALI definition is to convert it from a
+count of unhealthy components to the *percent* of them. Then, we can
+calculate each patient’s ALI as the proportion out of only their
+nonmissing components (i.e., their complete case proportion of unhealthy
+measurements). This approach effectively ignores the missing components
+per patient; they do not count positively or negatively toward their
+whole-person health.
 
 ``` r
-# View the fitted model coefficients
-mod_log_num$fit |> 
-  coefficients()
+# Calculate ALI as the proportion of nonmissing components that are unhealthy
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_prop = cc_prop_approach(outcome = "ANY_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "binomial") 
 ```
 
-    ##      (Intercept)    NUM_UNHEALTHY      NUM_MISSING          SEXMale 
-    ##      -2.61095470       0.20486850      -0.05948447      -0.02641687 
-    ## AGE_AT_ENCOUNTER 
-    ##       0.02305956
+#### Best/Worst Case Scenario
+
+For each of the 10 ALI components, we can assume that the missing values
+would have been healthy (for the best case scenario) or unhealthy (for
+the worst case scenario). Then, we fit the model using the original
+2-level categorical variable (unhealthy/healthy) for each component,
+further controlling for age and sex.
 
 ``` r
-# View the fitted model summary
-mod_log_num$fit |> 
-  summary()
+# Replace missing ALI components with "healthy" (the best case scenario)
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_best = case_approach(outcome = "ANY_ADMIT", 
+                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                             data = hosp_dat, 
+                             family = "binomial", 
+                             best = TRUE) 
 ```
 
-    ## 
-    ## Call:
-    ## glm(formula = as.formula(paste(outcome, "~ NUM_UNHEALTHY + NUM_MISSING + ", 
-    ##     paste(covar, collapse = "+"))), family = family, data = data)
-    ## 
-    ## Coefficients:
-    ##                   Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)      -2.610955   0.560638  -4.657 3.21e-06 ***
-    ## NUM_UNHEALTHY     0.204869   0.064532   3.175 0.001500 ** 
-    ## NUM_MISSING      -0.059484   0.077651  -0.766 0.443645    
-    ## SEXMale          -0.026417   0.160824  -0.164 0.869527    
-    ## AGE_AT_ENCOUNTER  0.023060   0.006813   3.385 0.000713 ***
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-    ## 
-    ## (Dispersion parameter for binomial family taken to be 1)
-    ## 
-    ##     Null deviance: 1046.2  on 999  degrees of freedom
-    ## Residual deviance: 1001.2  on 995  degrees of freedom
-    ## AIC: 1011.2
-    ## 
-    ## Number of Fisher Scoring iterations: 4
+The code above fits the model for the “best” case scenario. To instead
+fit the model for the “worst” case scenario, rather than best, simply
+switch the last argument in the call to the `case_approach()` function
+to be `best = FALSE` instead.
+
+#### Multiple Imputation
