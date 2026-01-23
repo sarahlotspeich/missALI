@@ -35,35 +35,62 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
   ALI_comp_excl = ALI_comp[-c(6, 7)] ## Remove the 6th and 7th element of ALI_comp
 
   # Fit the model of interest to each imputed dataset
-  if (is.null(post_imputation)) {
+  if (is.null(post_imputation) & components == "binary") {
     fit_imp = with(imp_data,
                    glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"))),
                        family = family))
-
     ## Pool the coefficients and variance estimates
     summ_fit_imp = summary(pool(fit_imp))
-  } else if (post_imputation == "cc_prop") {
+  } else {
     ## Save coefficients from each post-imputation model
-    p = length(covar) + 2 ### number of coefficients
+    if (post_imputation == "cc_prop") {
+      p = length(covar) + 2 ### number of coefficients = covar + int + prop
+    } else if (post_imputation == "num_miss") {
+      p = length(covar) + 3 ### number of coefficients = covar + int + num_ali + num_miss
+    } else if (is.null(post_imputation) || post_imputation == "miss_ind") {
+      p = length(covar) + 11 ### number of coefficients = covar + int + 10 comp
+    }
     per_imp_coeff = matrix(nrow = m, ncol = p)
     per_imp_vars = matrix(nrow = m, ncol = p)
     ## Loop over the imputed datasets
     for (b in 1:m) {
       ### Get complete data from bth imputation
       imp_dat_b = complete(data = imp_data, b)
-      ### If imputed numeric components, convert to binary
-      if (components == "numeric") {
-
-      }
-      ### Calculate complete-case proportion ALI from it
-      imp_dat_b$PROP_UNHEALTHY = apply(X = imp_dat_b[, ALI_comp],
-                                      MARGIN = 1,
-                                      FUN = mean,
-                                      na.rm = TRUE)
-      ### Fit the model
-      imp_fit_b = glm(formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", covar), collapse = "+"))),
+      ### Post-imputation complete-case proportion approach
+      if (post_imputation == "cc_prop") {
+        #### Calculate complete-case proportion ALI from it
+        imp_dat_b$PROP_UNHEALTHY = apply(X = imp_dat_b[, ALI_comp],
+                                         MARGIN = 1,
+                                         FUN = mean,
+                                         na.rm = TRUE)
+        #### Fit the model
+        imp_fit_b = glm(formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", covar), collapse = "+"))),
+                        family = family,
+                        data = imp_dat_b)
+      } else if (post_imputation == "num_miss") {
+        #### Create missingness indicators for remaining, unimputed values
+        imp_dat_b = num_miss_approach(outcome = outcome,
+                                      covar = covar,
+                                      data = imp_dat_b,
+                                      family = family)
+        #### Fit the model
+        fit_imp = imp_dat_b$fit
+      } else if (post_imputation == "miss_ind") {
+        #### Create missingness indicators for remaining, unimputed values
+        imp_dat_b = miss_ind_approach(outcome = outcome,
+                                      covar = covar,
+                                      data = imp_dat_b,
+                                      family = family)
+        #### Fit the model
+        fit_imp = imp_dat_b$fit
+      } else if (is.null(post_imputation)) {
+        #### Convert imputed numeric components --> binary
+        imp_dat_b = create_bin_components(data = imp_dat_b)
+        #### Fit the model
+        fit_imp = glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"))),
                       family = family,
                       data = imp_dat_b)
+      }
       ### Save its coefficients to the matrix
       per_imp_coeff[b,] = imp_fit_b$coefficients
       ### And its standard errors

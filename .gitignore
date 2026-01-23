@@ -9,3 +9,7 @@ data/deidentified_ali_hospitalizations.csv
 .Rbuildignore
 
 README.Rmd
+
+.Rhistory
+
+README_cache/gfm/
