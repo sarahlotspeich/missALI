@@ -7,13 +7,13 @@
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param components type of ALI components to be imputed. Current options are \code{components = "binary"} (the default) and \code{components = "numeric"}.
 #' @param m number of imputations. Default is \code{m = 100}.
-#' @param post_imputation optional, post-imputation transformation of the ALI components before fitting the model. Default is \code{post_imputation = NULL}; other options include \code{"cc_prop"}, \code{"miss_ind"}, and \code{"num_miss"}, which call the named approaches after imputing.
+#' @param post_imputation optional, post-imputation transformation of the ALI components before fitting the model. Default is \code{post_imputation = "none"}; other options include \code{"cc_prop"}, \code{"miss_ind"}, and \code{"num_miss"}, which call the named approaches after imputing.
 #' @return
 #' \item{data}{multiple imputed dataset (mids) object, returned by the mice function}
 #' \item{fit}{fitted regression model object.}
 #' @export
 #' @importFrom mice mice pool
-mult_imp_approach = function(outcome, covar = NULL, data, family, components = "binary", m = 100, post_imputation = NULL) {
+mult_imp_approach = function(outcome, covar = NULL, data, family, components = "binary", m = 100, post_imputation = "none") {
   # Setup
   ## Initialize names with binary components
   ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
@@ -35,7 +35,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
   ALI_comp_excl = ALI_comp[-c(6, 7)] ## Remove the 6th and 7th element of ALI_comp
 
   # Fit the model of interest to each imputed dataset
-  if (is.null(post_imputation) & components == "binary") {
+  if (post_imputation == "none" & components == "binary") {
     fit_imp = with(imp_data,
                    glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"))),
                        family = family))
@@ -47,7 +47,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
       p = length(covar) + 2 ### number of coefficients = covar + int + prop
     } else if (post_imputation == "num_miss") {
       p = length(covar) + 3 ### number of coefficients = covar + int + num_ali + num_miss
-    } else if (is.null(post_imputation) || post_imputation == "miss_ind") {
+    } else if (post_imputation == "none" || post_imputation == "miss_ind") {
       p = length(covar) + 11 ### number of coefficients = covar + int + 10 comp
     }
     per_imp_coeff = matrix(nrow = m, ncol = p)
@@ -83,7 +83,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                       family = family)
         #### Fit the model
         fit_imp = imp_dat_b$fit
-      } else if (is.null(post_imputation)) {
+      } else if (post_imputation == "none") {
         #### Convert imputed numeric components --> binary
         imp_dat_b = create_bin_components(data = imp_dat_b)
         #### Fit the model

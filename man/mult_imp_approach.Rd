@@ -12,7 +12,7 @@ mult_imp_approach(
   family,
   components = "binary",
   m = 100,
-  post_imputation = NULL
+  post_imputation = "none"
 )
 }
 \arguments{
@@ -28,7 +28,7 @@ mult_imp_approach(
 
 \item{m}{number of imputations. Default is \code{m = 100}.}
 
-\item{post_imputation}{optional, post-imputation transformation of the ALI components before fitting the model. Default is \code{post_imputation = NULL}; other options include \code{"cc_prop"}, \code{"miss_ind"}, and \code{"num_miss"}, which call the named approaches after imputing.}
+\item{post_imputation}{optional, post-imputation transformation of the ALI components before fitting the model. Default is \code{post_imputation = "none"}; other options include \code{"cc_prop"}, \code{"miss_ind"}, and \code{"num_miss"}, which call the named approaches after imputing.}
 }
 \value{
 \item{data}{multiple imputed dataset (mids) object, returned by the mice function}
