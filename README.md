@@ -3,7 +3,6 @@
   <h1>missALI: Overcoming missing data to predict hospitalization from the
 ALI</h1>
 </p>
-================
 
 ## Installation
 
