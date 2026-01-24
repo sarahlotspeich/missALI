@@ -50,7 +50,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
     } else if (post_imputation == "none") {
       p = length(covar) + length(ALI_comp_excl) + 1 ### number of coefficients = covar + int + 8 comp
     } else if (post_imputation == "miss_ind") {
-      p = length(covar) + 11 ### number of coefficients = covar + int + 10 comp
+      p = length(covar) + 12 ### number of coefficients = covar + int + 10 comp
     }
     per_imp_coeff = matrix(nrow = m, ncol = p)
     per_imp_vars = matrix(nrow = m, ncol = p)
