@@ -9,35 +9,27 @@
 #' \item{data}{dataframe with counts of unhealthy and missing ALI components.}
 #' \item{fit}{fitted regression model object.}
 #' @export
-#' @importFrom dplyr select group_by summarize left_join
-#' @importFrom tidyr gather
 num_miss_approach = function(outcome, covar = NULL, data, family) {
   # Define vector of binary component names
-  bin_ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
-                   "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
+  ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
+               "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
 
-  # Summarize by patient and count numbers unhealthy and missing
-  sum_data = data |>
-    select(PAT_MRN_ID, all_of(bin_ALI_comp)) |>
-    gather(key = "COMP", value = "VAL", -1) |>
-    group_by(PAT_MRN_ID, .inform = FALSE) |>
-    summarize(NUM_UNHEALTHY = sum(VAL == 1, na.rm = TRUE),
-              NUM_MISSING = sum(is.na(VAL)))
+  # Calculate number missing per patient
+  imp_dat_b$NUM_MISSING = apply(X = is.na(data[, ALI_comp]),
+                                MARGIN = 1,
+                                FUN = sum,
+                                na.rm = TRUE)
 
-  # Merge it back into full patient data
-  data = data |>
-    left_join(sum_data, by = "PAT_MRN_ID")
+  # Calculate number unhealthy per patient
+  imp_dat_b$NUM_UNHEALTHY = apply(X = data[, ALI_comp],
+                                  MARGIN = 1,
+                                  FUN = sum,
+                                  na.rm = TRUE)
 
   # Fit the model of interest
-  if (!is.null(covar)) {
-    fit_num = glm(as.formula(paste(outcome, "~ NUM_UNHEALTHY + NUM_MISSING + ", paste(covar, collapse = "+"))),
-                  family = family,
-                  data = data)
-  } else {
-    fit_num = glm(as.formula(paste(outcome, "~ NUM_UNHEALTHY + NUM_MISSING")),
-                  family = family,
-                  data = data)
-  }
+  fit_num = glm(as.formula(paste(outcome, "~", paste(c("NUM_UNHEALTHY", "NUM_MISSING", covar), collapse = "+"))),
+                family = family,
+                data = data)
 
   # Return list with the data and model
   return(list(data = data,
