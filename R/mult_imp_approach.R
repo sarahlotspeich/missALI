@@ -25,10 +25,22 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
     stop("Invalid components argument provided. Please choose from either binary or numeric.")
   }
 
+  # Keep ID column in dataset, but don't use it in imputations
+  ## Initialize predictor matrix by not letting it iterate
+  init_imp_data = suppressWarnings(
+    mice(data = data[, c("PAT_MRN_ID", outcome, ALI_comp, covar)],
+                       m = m,
+                       printFlag = FALSE,
+                       maxit = 0)
+  )
+  pred_without_id = init_imp_data$predictorMatrix ## predictor matrix
+  pred_without_id[, "PAT_MRN_ID"] = 0 ## set id column to zero to exclude
+
   # Impute missing components, including outcome and covar in models
-  imp_data = mice(data = data[, c(outcome, ALI_comp, covar)],
+  imp_data = mice(data = data[, c("PAT_MRN_ID", outcome, ALI_comp, covar)],
                   m = m,
-                  printFlag = FALSE)
+                  printFlag = FALSE,
+                  predictorMatrix = pred_without_id)
 
   # Essentially, all HCST would be treated as the same and CREAT_C is redundant for A1C
   ## So, let's exclude them from our prediction model
