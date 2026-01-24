@@ -17,7 +17,7 @@ num_miss_approach = function(outcome, covar = NULL, data, family) {
                    "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
 
   # Summarize by patient and count numbers unhealthy and missing
-  sum_data = hosp_dat |>
+  sum_data = data |>
     select(PAT_MRN_ID, all_of(bin_ALI_comp)) |>
     gather(key = "COMP", value = "VAL", -1) |>
     group_by(PAT_MRN_ID, .inform = FALSE) |>
