@@ -15,16 +15,16 @@ num_miss_approach = function(outcome, covar = NULL, data, family) {
                "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
 
   # Calculate number missing per patient
-  imp_dat_b$NUM_MISSING = apply(X = is.na(data[, ALI_comp]),
-                                MARGIN = 1,
-                                FUN = sum,
-                                na.rm = TRUE)
+  data$NUM_MISSING = apply(X = is.na(data[, ALI_comp]),
+                           MARGIN = 1,
+                           FUN = sum,
+                           na.rm = TRUE)
 
   # Calculate number unhealthy per patient
-  imp_dat_b$NUM_UNHEALTHY = apply(X = data[, ALI_comp],
-                                  MARGIN = 1,
-                                  FUN = sum,
-                                  na.rm = TRUE)
+  data$NUM_UNHEALTHY = apply(X = data[, ALI_comp],
+                             MARGIN = 1,
+                             FUN = sum,
+                             na.rm = TRUE)
 
   # Fit the model of interest
   fit_num = glm(as.formula(paste(outcome, "~", paste(c("NUM_UNHEALTHY", "NUM_MISSING", covar), collapse = "+"))),
