@@ -33,6 +33,7 @@ mult_imp_approach(
 \value{
 \item{data}{multiple imputed dataset (mids) object, returned by the mice function}
 \item{fit}{fitted regression model object.}
+\item{post_imputation}{reminder of whether post-imputation transformation was performed}
 }
 \description{
 Multiple imputation approach to fitting regression models with missing ALI components

@@ -11,6 +11,7 @@
 #' @return
 #' \item{data}{multiple imputed dataset (mids) object, returned by the mice function}
 #' \item{fit}{fitted regression model object.}
+#' \item{post_imputation}{reminder of whether post-imputation transformation was performed}
 #' @export
 #' @importFrom mice mice pool complete
 mult_imp_approach = function(outcome, covar = NULL, data, family, components = "binary", m = 100, post_imputation = "none") {
@@ -153,5 +154,6 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
 
   # Return list with the data and model
   return(list(data = imp_data,
-              fit = summ_fit_imp))
+              fit = summ_fit_imp,
+              post_imputation = post_imputation))
 }
