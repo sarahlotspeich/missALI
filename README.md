@@ -1,8 +1,6 @@
-<p style="display:inline-block;">
-  <img src="hex.png" width="200" title="a pageant woman with a sash that says Miss ALI wearing a doctor's lab coat and holding a clipboard">
-  <h1>missALI: Overcoming missing data to predict hospitalization from the
-ALI</h1>
-</p>
+`missALI`: Overcoming missing data to predict hospitalization from the
+ALI
+================
 
 ## Installation
 
@@ -210,8 +208,9 @@ mod_log_num$fit |>
 
     ## 
     ## Call:
-    ## glm(formula = as.formula(paste(outcome, "~ NUM_UNHEALTHY + NUM_MISSING + ", 
-    ##     paste(covar, collapse = "+"))), family = family, data = data)
+    ## glm(formula = as.formula(paste(outcome, "~", paste(c("NUM_UNHEALTHY", 
+    ##     "NUM_MISSING", covar), collapse = "+"))), family = family, 
+    ##     data = data)
     ## 
     ## Coefficients:
     ##                   Estimate Std. Error z value Pr(>|z|)    
@@ -415,6 +414,24 @@ mod_log_mi_num = mult_imp_approach(outcome = "ANY_ADMIT",
                                    m = 100, 
                                    post_imputation = "none") 
 
+# View the fitted model coefficients (from mice)
+mod_log_mi_num$fit
+```
+
+    ##                term    estimate   std.error  statistic          df      p.value
+    ## 1       (Intercept) -2.98780262 0.342866210 -8.7141939  30754.6029 1.536205e-18
+    ## 2               A1C  0.54034597 0.238004166  2.2703215    877.7611 9.882851e-01
+    ## 3               ALB  1.02147547 0.649090938  1.5737016  10113.9067 9.422061e-01
+    ## 4               BMI  0.40645364 0.171734548  2.3667552  24635.7568 9.910238e-01
+    ## 5              CHOL -0.12601664 0.200467517 -0.6286137   2790.6196 2.648267e-01
+    ## 6               CRP  0.12154045 0.526804589  0.2307126    129.4461 5.910488e-01
+    ## 7              TRIG  0.21741857 0.202240743  1.0750483   1992.0053 8.587584e-01
+    ## 8      BP_DIASTOLIC -0.18053696 0.372986178 -0.4840312 224377.2101 3.141821e-01
+    ## 9       BP_SYSTOLIC  0.05088545 0.256753434  0.1981880   8842.0054 5.785487e-01
+    ## 10          SEXMale -0.02596025 0.168841185 -0.1537554 101225.6333 4.389014e-01
+    ## 11 AGE_AT_ENCOUNTER  0.02766951 0.006705603  4.1263262  24334.8434 9.999815e-01
+
+``` r
 # View the loggedEvents (from mice)
 mod_log_mi_num$data$loggedEvents |> 
   head()
@@ -630,3 +647,151 @@ mod_log_mi_worst$fit
     ## 13 AGE_AT_ENCOUNTER  0.02807993 0.009123507  3.07775595   463.4164 0.99889535
 
 ## Prediction
+
+For all approaches except multiple imputation, predicted probabilities
+of hospitalization can be obtained using the usual `predict()` function
+for a `glm` object. For example, we can predict from the missingness
+indicator **logistic regression** model above as:
+
+``` r
+# Calculate predicted probabilities from logistic regression w/ missingness indicator
+pred_prob_ind = mod_log_ind$fit |> 
+  predict(type = "response")
+## View the first few
+pred_prob_ind |> 
+  head()
+```
+
+    ##         1         2         3         4         5         6 
+    ## 0.5472033 0.1779934 0.2661794 0.0986426 0.3529844 0.3489225
+
+``` r
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_prob_ind)
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
+
+For a **Poisson regression** model, using `predict(type = "response")`
+will obtain the predicted *count* of hospitalizations for each patient.
+
+``` r
+# Allow each ALI component to be either healthy, unhealthy, or missing 
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_ind = miss_ind_approach(outcome = "NUM_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "poisson") 
+
+# Calculate predicted probabilities from Poisson regression w/ missingness indicator
+pred_prob_ind = mod_log_ind$fit |> 
+  predict(type = "response")
+## View the first few
+pred_prob_ind |> 
+  head()
+```
+
+    ##         1         2         3         4         5         6 
+    ## 2.5659738 0.2585936 0.4465605 0.1735790 0.8711564 0.6444862
+
+``` r
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_prob_ind)
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
+
+When predicting after **multiple imputation**, we take the pooled
+coefficients across all models (returned in the `\$fit` slot by the
+functions above) and use them to predict for each based based on each
+imputed dataset. Ultimately, model performance is based on the *average
+prediction* for each patient across all imputed datasets.
+
+``` r
+# Calculate predicted probabilities from logistic regression w/ multiple imputation
+pred_prob_mi = mod_log_mi |> 
+  avg_predict_imp()
+## View the first few
+pred_prob_mi |> 
+  head()
+```
+
+    ##         1         2         3         4         5         6 
+    ## 0.5082718 0.2611477 0.2973020 0.1261773 0.3508758 0.3556054
+
+``` r
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_prob_mi)
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+plot(roc_curve, 
+     col = "#DF536B", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-20-1.png)<!-- -->
+
+The `avg_predict_imp()` function takes in the return list from
+`mult_imp_approach()`, which means it inherits the pooled model
+coefficients, the `mids` object returned by `mice` with all imputed
+datasets, and a reminder about whether any `post_imputation`
+transformations were performed.
+
+``` r
+# Calculate predicted probabilities from logistic regression w/ multiple imputation 
+## followed by the complete-case proportion ALI calculation
+pred_prob_mi_cc_prop = mod_log_mi_cc_prop |> 
+  avg_predict_imp()
+## View the first few
+pred_prob_mi_cc_prop |> 
+  head()
+```
+
+    ##         1         2         3         4         5         6 
+    ## 0.3120258 0.2775269 0.2288939 0.1146300 0.2708474 0.2450125
+
+``` r
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_prob_mi_cc_prop)
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+plot(roc_curve, 
+     col = "#2297E6", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
