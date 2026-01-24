@@ -36,6 +36,6 @@ avg_predict_imp = function(imp_res) {
       exp(pred_imp_logodds) / (1 + exp(pred_imp_logodds))
   }
   # Calculate average prediction
-  pooled_pred = pooled_pred / m
+  pooled_pred = as.vector(pooled_pred / m)
   return(pooled_pred)
 }
