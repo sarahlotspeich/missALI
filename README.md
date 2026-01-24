@@ -1,6 +1,7 @@
-`missALI`: Overcoming missing data to predict hospitalization from the
-ALI
-================
+<p style="display:inline-block;">
+  <img src="hex.png" width="200" title="Woman with long hair wearing a crown, lab coat, and pageant sash that says miss ALI is holding a clipboard">
+  <h1>missALI: Overcoming missing data to predict hospitalization from the ALI</h1>
+</p
 
 ## Installation
 
