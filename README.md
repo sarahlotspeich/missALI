@@ -91,7 +91,7 @@ Most of the missing data approaches are specifically for when we use the
 However, imputation can also be done on the original **numeric**
 measurements from which the ALI components were derived.
 
-#### Missingness Indicators
+### Missingness Indicators
 
 For each of the 10 ALI components, we can go from two levels
 (unhealthy/healthy) to three levels (unhealthy/healthy/missing). Then,
@@ -183,7 +183,7 @@ All of the approach functions return a list with these two slots! For
 simplicity, only code fitting models with the following approaches is
 shown below.
 
-#### Sum of Missingness Indicators
+### Sum of Missingness Indicators
 
 The original definition of the ALI (from Seeman et al.) was actually the
 count of unhealthy components, taking of values from 0 to 10. When we
@@ -200,9 +200,36 @@ mod_log_num = num_miss_approach(outcome = "ANY_ADMIT",
                                 covar = c("SEX", "AGE_AT_ENCOUNTER"), 
                                 data = hosp_dat, 
                                 family = "binomial") 
+
+# View the fitted model summary
+mod_log_num$fit |> 
+  summary()
 ```
 
-#### Proportion of Non-Missing
+    ## 
+    ## Call:
+    ## glm(formula = as.formula(paste(outcome, "~ NUM_UNHEALTHY + NUM_MISSING + ", 
+    ##     paste(covar, collapse = "+"))), family = family, data = data)
+    ## 
+    ## Coefficients:
+    ##                   Estimate Std. Error z value Pr(>|z|)    
+    ## (Intercept)      -2.610955   0.560638  -4.657 3.21e-06 ***
+    ## NUM_UNHEALTHY     0.204869   0.064532   3.175 0.001500 ** 
+    ## NUM_MISSING      -0.059484   0.077651  -0.766 0.443645    
+    ## SEXMale          -0.026417   0.160824  -0.164 0.869527    
+    ## AGE_AT_ENCOUNTER  0.023060   0.006813   3.385 0.000713 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## (Dispersion parameter for binomial family taken to be 1)
+    ## 
+    ##     Null deviance: 1046.2  on 999  degrees of freedom
+    ## Residual deviance: 1001.2  on 995  degrees of freedom
+    ## AIC: 1011.2
+    ## 
+    ## Number of Fisher Scoring iterations: 4
+
+### Complete-Case Proportion
 
 Another way to adapt the original ALI definition is to convert it from a
 count of unhealthy components to the *percent* of them. Then, we can
@@ -219,9 +246,35 @@ mod_log_prop = cc_prop_approach(outcome = "ANY_ADMIT",
                                 covar = c("SEX", "AGE_AT_ENCOUNTER"), 
                                 data = hosp_dat, 
                                 family = "binomial") 
+
+# View the fitted model summary
+mod_log_prop$fit |> 
+  summary()
 ```
 
-#### Best/Worst Case Scenario
+    ## 
+    ## Call:
+    ## glm(formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", 
+    ##     covar), collapse = "+"))), family = family, data = data)
+    ## 
+    ## Coefficients:
+    ##                   Estimate Std. Error z value Pr(>|z|)    
+    ## (Intercept)      -3.067011   0.329560  -9.306  < 2e-16 ***
+    ## PROP_UNHEALTHY    1.468148   0.387711   3.787 0.000153 ***
+    ## SEXMale          -0.022466   0.160613  -0.140 0.888757    
+    ## AGE_AT_ENCOUNTER  0.026523   0.006355   4.174    3e-05 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## (Dispersion parameter for binomial family taken to be 1)
+    ## 
+    ##     Null deviance: 1046.2  on 999  degrees of freedom
+    ## Residual deviance: 1002.4  on 996  degrees of freedom
+    ## AIC: 1010.4
+    ## 
+    ## Number of Fisher Scoring iterations: 4
+
+### Best/Worst Case Scenario
 
 For each of the 10 ALI components, we can assume that the missing values
 would have been healthy (for the best case scenario) or unhealthy (for
@@ -237,11 +290,341 @@ mod_log_best = case_approach(outcome = "ANY_ADMIT",
                              data = hosp_dat, 
                              family = "binomial", 
                              best = TRUE) 
+
+# View the fitted model summary
+mod_log_best$fit |> 
+  summary()
 ```
+
+    ## 
+    ## Call:
+    ## glm(formula = as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, 
+    ##     covar), collapse = "+"))), family = family, data = data)
+    ## 
+    ## Coefficients: (1 not defined because of singularities)
+    ##                    Estimate Std. Error z value Pr(>|z|)    
+    ## (Intercept)       -3.366602   0.389632  -8.640  < 2e-16 ***
+    ## A1C                0.460333   0.224398   2.051  0.04023 *  
+    ## ALB                0.847036   0.306851   2.760  0.00577 ** 
+    ## BMI                0.362584   0.167648   2.163  0.03056 *  
+    ## CHOL              -0.240001   0.191880  -1.251  0.21101    
+    ## CRP                1.387056   0.567750   2.443  0.01456 *  
+    ## CREAT_C           14.166295 535.411237   0.026  0.97889    
+    ## HCST                     NA         NA      NA       NA    
+    ## TRIG               0.115405   0.188853   0.611  0.54114    
+    ## BP_DIASTOLIC      -0.081501   0.366639  -0.222  0.82409    
+    ## BP_SYSTOLIC        0.108105   0.239999   0.450  0.65239    
+    ## SEXMale           -0.003765   0.166566  -0.023  0.98197    
+    ## AGE_AT_ENCOUNTER   0.022611   0.006791   3.329  0.00087 ***
+    ## ---
+    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    ## 
+    ## (Dispersion parameter for binomial family taken to be 1)
+    ## 
+    ##     Null deviance: 1046.17  on 999  degrees of freedom
+    ## Residual deviance:  980.13  on 988  degrees of freedom
+    ## AIC: 1004.1
+    ## 
+    ## Number of Fisher Scoring iterations: 12
 
 The code above fits the model for the “best” case scenario. To instead
 fit the model for the “worst” case scenario, rather than best, simply
 switch the last argument in the call to the `case_approach()` function
 to be `best = FALSE` instead.
 
-#### Multiple Imputation
+### Multiple Imputation
+
+Multiple imputation is the only approach that applies to both the binary
+and numeric versions of the 10 ALI components. First, we try imputing
+the **binary ALI components** directly.
+
+``` r
+# Be reproducible, since multiple imputation is a random process
+set.seed(124)
+
+# Replace missing ALI components with imputations of either "healthy" or "unhealthy" 
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_mi = mult_imp_approach(outcome = "ANY_ADMIT", 
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                               data = hosp_dat, 
+                               family = "binomial", 
+                               components = "binary", 
+                               m = 100, 
+                               post_imputation = "none") 
+```
+
+    ## Warning: Number of logged events: 501
+
+``` r
+# View the fitted model coefficients (from mice)
+mod_log_mi$fit
+```
+
+    ##                term    estimate   std.error  statistic        df     p.value
+    ## 1       (Intercept) -2.76745693 1.018215723 -2.7179475 197.31480 0.007153511
+    ## 2               A1C  0.64667271 0.336899169  1.9194844 147.89681 0.056848589
+    ## 3               ALB -0.28583689 0.913562198 -0.3128817 210.52224 0.754680275
+    ## 4               BMI  0.05231314 0.374379364  0.1397330 101.99633 0.889146523
+    ## 5              CHOL -0.62659294 0.582493149 -1.0757087  66.11269 0.285967572
+    ## 6               CRP  1.40554672 1.031603863  1.3624869  34.08824 0.181979002
+    ## 7              TRIG  0.07910007 0.321530621  0.2460110 140.22678 0.806033449
+    ## 8      BP_DIASTOLIC -0.12078217 0.403368225 -0.2994340 815.61822 0.764685200
+    ## 9       BP_SYSTOLIC -0.11605633 0.405872170 -0.2859430 162.61567 0.775285670
+    ## 10          SEXMale -0.03012672 0.176482183 -0.1707069 908.04194 0.864492276
+    ## 11 AGE_AT_ENCOUNTER  0.02810801 0.009070224  3.0989316 253.73945 0.002160872
+
+There were 2 of 10 ALI components that caused the warnings/logged
+events. These can be viewed from the returned object as follows.
+
+``` r
+# View the loggedEvents (from mice)
+mod_log_mi$data$loggedEvents |> 
+  head()
+```
+
+    ##   it im dep     meth          out
+    ## 1  0  0     constant         HCST
+    ## 2  1  1 CRP      pmm BP_DIASTOLIC
+    ## 3  1  2 CRP      pmm BP_DIASTOLIC
+    ## 4  1  3 CRP      pmm BP_DIASTOLIC
+    ## 5  1  4 CRP      pmm BP_DIASTOLIC
+    ## 6  1  5 CRP      pmm BP_DIASTOLIC
+
+Essentially, homocysteine was imputed to be constant/the same for all
+patients, and creatinine clearance was collinear/redundant for
+hemoglobin A1C. Thus, the imputed models above were fit using a subset
+of 8 ALI components. (This can be seen from the `term` column in the
+output above.)
+
+To instead impute the **numeric ALI components** and then categorize
+them post-imputation, the only change to the code above would be
+switching to `components = "numeric"`.
+
+``` r
+# Be reproducible, since multiple imputation is a random process
+set.seed(124)
+
+# Impute numeric measurements and then re-define binary ALI components
+mod_log_mi_num = mult_imp_approach(outcome = "ANY_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   data = hosp_dat, 
+                                   family = "binomial", 
+                                   components = "numeric", 
+                                   m = 100, 
+                                   post_imputation = "none") 
+
+# View the loggedEvents (from mice)
+mod_log_mi_num$data$loggedEvents |> 
+  head()
+```
+
+    ## NULL
+
+#### Handling Post-Imputation Residual Missingness
+
+We could also apply one of the other missing data approaches to the
+post-imputation data using the `post_imputation` argument to the
+`mult_imp_approach()` function. For example, we could re-calculate the
+**complete-case proportion** ALI after some of the missing components
+have been filled in with imputed values.
+
+``` r
+# Be reproducible, since multiple imputation is a random process
+set.seed(124)
+
+# Replace missing ALI components with imputations of either "healthy" or "unhealthy", 
+## re-calculate the complete-case proportion ALI after reducing the amount of missingness, 
+## and fit a model with this proportion as the primary predictor (+ other covariates)
+mod_log_mi_cc_prop = mult_imp_approach(outcome = "ANY_ADMIT", 
+                                       covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                       data = hosp_dat, 
+                                       family = "binomial", 
+                                       components = "binary", 
+                                       m = 100, 
+                                       post_imputation = "cc_prop") 
+```
+
+    ## Warning: Number of logged events: 501
+
+``` r
+# View the fitted model coefficients (from mice)
+mod_log_mi_cc_prop$fit
+```
+
+    ##               term    estimate   std.error  statistic          df      p.value
+    ## 1      (Intercept) -3.26601520 0.357109033 -9.1457087   9861.7062 3.548166e-20
+    ## 2   PROP_UNHEALTHY  1.99483564 0.634067102  3.1460955    378.7906 9.991073e-01
+    ## 3          SEXMale -0.02764672 0.162145044 -0.1705061 680469.8045 4.323061e-01
+    ## 4 AGE_AT_ENCOUNTER  0.02726028 0.006458883  4.2205865  37313.9762 9.999878e-01
+
+Other options for post-imputation residual missing data handling are…
+
+Assigning **missingness indicators** to any variables that couldn’t be
+imputed:
+
+``` r
+# Be reproducible, since multiple imputation is a random process
+set.seed(124)
+
+# Replace missing ALI components with imputations of either "healthy" or "unhealthy", 
+## create missingness indicators for ALI components that couldn't be imputed,
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_mi_miss_ind = mult_imp_approach(outcome = "ANY_ADMIT", 
+                                        covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                        data = hosp_dat, 
+                                        family = "binomial", 
+                                        components = "binary", 
+                                        m = 100, 
+                                        post_imputation = "miss_ind") 
+```
+
+    ## Warning: Number of logged events: 501
+
+``` r
+# View the fitted model coefficients (from mice)
+mod_log_mi_miss_ind$fit
+```
+
+    ##                       term    estimate   std.error   statistic         df
+    ## 1              (Intercept) -2.37683870 1.164090029 -2.04179972   607.3305
+    ## 2           A1C_FUnhealthy  0.65483217 0.338051457  1.93707838   243.7037
+    ## 3           ALB_FUnhealthy -0.28828790 0.917457670 -0.31422474   363.3858
+    ## 4           BMI_FUnhealthy  0.05008607 0.375517983  0.13337862   171.1470
+    ## 5          CHOL_FUnhealthy -0.61721319 0.583782804 -1.05726511   129.6006
+    ## 6           CRP_FUnhealthy  1.40976227 1.034871012  1.36225892   107.5430
+    ## 7       CREAT_C_FUnhealthy  0.01670072 0.267606175  0.06240784   406.0873
+    ## 8            HCST_FMissing -0.40290276 0.608984644 -0.66159757 10739.7197
+    ## 9          TRIG_FUnhealthy  0.07329258 0.323068702  0.22686377   229.6832
+    ## 10 BP_DIASTOLIC_FUnhealthy -0.11461702 0.402692199 -0.28462687 10419.5576
+    ## 11  BP_SYSTOLIC_FUnhealthy -0.12223397 0.407117746 -0.30024231   269.5969
+    ## 12                 SEXMale -0.03012268 0.176860509 -0.17031888 31326.0559
+    ## 13        AGE_AT_ENCOUNTER  0.02807993 0.009123507  3.07775595   463.4164
+    ##       p.value
+    ## 1  0.02080146
+    ## 2  0.97305425
+    ## 3  0.37676534
+    ## 4  0.55297467
+    ## 5  0.14617867
+    ## 6  0.91201873
+    ## 7  0.52486562
+    ## 8  0.25412168
+    ## 9  0.58963427
+    ## 10 0.38796784
+    ## 11 0.38211186
+    ## 12 0.43238023
+    ## 13 0.99889535
+
+Including the traditional count ALI (number of unhealthy components)
+while controlling for the **number of missing** ones, in addition to the
+other covariates:
+
+``` r
+# Be reproducible, since multiple imputation is a random process
+set.seed(124)
+
+# Replace missing ALI components with imputations of either "healthy" or "unhealthy", 
+## sum up numbers of unhealthy and missing ALI components,
+## and fit a model with these counts as predictors (+ other covariates)
+mod_log_mi_num_miss = mult_imp_approach(outcome = "ANY_ADMIT", 
+                                        covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                        data = hosp_dat, 
+                                        family = "binomial", 
+                                        components = "binary", 
+                                        m = 100, 
+                                        post_imputation = "num_miss") 
+```
+
+    ## Warning: Number of logged events: 501
+
+``` r
+# View the fitted model coefficients (from mice)
+mod_log_mi_num_miss$fit
+```
+
+    ##               term    estimate   std.error  statistic           df      p.value
+    ## 1      (Intercept) -2.84758445 0.641866540 -4.4364121  111172.2304 4.577917e-06
+    ## 2    NUM_UNHEALTHY  0.22412640 0.070701967  3.1700165     376.5953 9.991755e-01
+    ## 3      NUM_MISSING -0.43158299 0.548464222 -0.7868936 3588385.0215 2.156721e-01
+    ## 4          SEXMale -0.02982243 0.162224349 -0.1838345  657678.0171 4.270717e-01
+    ## 5 AGE_AT_ENCOUNTER  0.02718400 0.006474759  4.1984565   35843.6205 9.999865e-01
+
+And filling them in with the **best (healthy) or worst (unhealthy)
+case** scenarios:
+
+``` r
+# Be reproducible, since multiple imputation is a random process
+set.seed(124)
+
+# Replace missing ALI components with imputations of either "healthy" or "unhealthy", 
+## assume remaining missing values are "healthy",
+## and fit a model with these counts as predictors (+ other covariates)
+mod_log_mi_best = mult_imp_approach(outcome = "ANY_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                    data = hosp_dat, 
+                                    family = "binomial", 
+                                    components = "binary", 
+                                    m = 100, 
+                                    post_imputation = "best") 
+```
+
+    ## Warning: Number of logged events: 501
+
+``` r
+# View the fitted model coefficients (from mice)
+mod_log_mi_best$fit
+```
+
+    ##                term    estimate   std.error   statistic         df     p.value
+    ## 1       (Intercept) -2.77488684 1.020303959 -2.71966683   339.8865 0.003435247
+    ## 2               A1C  0.64849154 0.337407924  1.92198076   243.9705 0.972113549
+    ## 3               ALB -0.28502830 0.916217500 -0.31109240   364.7337 0.377954051
+    ## 4               BMI  0.05230383 0.375143601  0.13942350   171.2893 0.555360350
+    ## 5              CHOL -0.62661606 0.583080156 -1.07466538   129.4530 0.142261774
+    ## 6               CRP  1.40541988 1.033157142  1.36031570   107.5495 0.911712800
+    ## 7           CREAT_C  0.01633891 0.267516181  0.06107633   404.9743 0.524335724
+    ## 8              HCST          NA          NA          NA         NA          NA
+    ## 9              TRIG  0.07990132 0.321301094  0.24868050   231.6489 0.598085866
+    ## 10     BP_DIASTOLIC -0.12049799 0.403251781 -0.29881577 10246.4603 0.382543340
+    ## 11      BP_SYSTOLIC -0.11635205 0.405899258 -0.28665254   271.2835 0.387298591
+    ## 12          SEXMale -0.03000077 0.176771533 -0.16971492 31699.3961 0.432617711
+    ## 13 AGE_AT_ENCOUNTER  0.02811289 0.009091923  3.09207358   467.5877 0.998946776
+
+``` r
+# Be reproducible, since multiple imputation is a random process
+set.seed(124)
+
+# Replace missing ALI components with imputations of either "healthy" or "unhealthy", 
+## assume remaining missing values are "unhealthy",
+## and fit a model with these counts as predictors (+ other covariates)
+mod_log_mi_worst = mult_imp_approach(outcome = "ANY_ADMIT", 
+                                     covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                     data = hosp_dat, 
+                                     family = "binomial", 
+                                     components = "binary", 
+                                     m = 100, 
+                                     post_imputation = "worst") 
+```
+
+    ## Warning: Number of logged events: 501
+
+``` r
+# View the fitted model coefficients (from mice)
+mod_log_mi_worst$fit
+```
+
+    ##                term    estimate   std.error   statistic         df    p.value
+    ## 1       (Intercept) -2.37683870 1.164090029 -2.04179972   607.3305 0.02080146
+    ## 2               A1C  0.65483217 0.338051457  1.93707838   243.7037 0.97305425
+    ## 3               ALB -0.28828790 0.917457670 -0.31422474   363.3858 0.37676534
+    ## 4               BMI  0.05008607 0.375517983  0.13337862   171.1470 0.55297467
+    ## 5              CHOL -0.61721319 0.583782804 -1.05726511   129.6006 0.14617867
+    ## 6               CRP  1.40976227 1.034871012  1.36225892   107.5430 0.91201873
+    ## 7           CREAT_C  0.01670072 0.267606175  0.06240784   406.0873 0.52486562
+    ## 8              HCST -0.40290276 0.608984644 -0.66159757 10739.7197 0.25412168
+    ## 9              TRIG  0.07329258 0.323068702  0.22686377   229.6832 0.58963427
+    ## 10     BP_DIASTOLIC -0.11461702 0.402692199 -0.28462687 10419.5576 0.38796784
+    ## 11      BP_SYSTOLIC -0.12223397 0.407117746 -0.30024231   269.5969 0.38211186
+    ## 12          SEXMale -0.03012268 0.176860509 -0.17031888 31326.0559 0.43238023
+    ## 13 AGE_AT_ENCOUNTER  0.02807993 0.009123507  3.07775595   463.4164 0.99889535
+
+## Prediction
