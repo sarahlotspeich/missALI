@@ -33,6 +33,7 @@ mult_imp_approach(
 \value{
 \item{data}{multiple imputed dataset (mids) object, returned by the mice function}
 \item{fit}{fitted regression model object.}
+\item{components}{reminder of whether components were treated as binary or numeric}
 \item{post_imputation}{reminder of whether post-imputation transformation was performed}
 }
 \description{
