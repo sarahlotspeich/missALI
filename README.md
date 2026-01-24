@@ -724,7 +724,7 @@ plot(roc_curve,
 ![](README_files/figure-gfm/unnamed-chunk-19-1.png)<!-- -->
 
 When predicting after **multiple imputation**, we take the pooled
-coefficients across all models (returned in the `\$fit` slot by the
+coefficients across all models (returned in the `$fit` slot by the
 functions above) and use them to predict for each based based on each
 imputed dataset. Ultimately, model performance is based on the *average
 prediction* for each patient across all imputed datasets.
