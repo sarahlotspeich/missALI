@@ -1,7 +1,6 @@
-<p style="display:inline-block;">
-  <img src="hex.png" width="200" title="a woman with long hair and a crown is wearing a doctor's lab coat and a pageant sash that says miss ALI while holding a clipboard">
-  <h1>missALI: Overcoming missing data to predict hospitalization from the ALI</h1>
-</p>
+`missALI`: Overcoming missing data to predict hospitalization from the
+ALI
+================
 
 ## Installation
 
