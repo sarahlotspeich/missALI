@@ -7,7 +7,7 @@
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param components type of ALI components to be imputed. Current options are \code{components = "binary"} (the default) and \code{components = "numeric"}.
 #' @param m number of imputations. Default is \code{m = 100}.
-#' @param post_imputation optional, post-imputation transformation of the ALI components before fitting the model. Default is \code{post_imputation = "none"}; other options include \code{"cc_prop"}, \code{"miss_ind"}, and \code{"num_miss"}, which call the named approaches after imputing.
+#' @param post_imputation optional, post-imputation transformation of the ALI components before fitting the model. Default is \code{post_imputation = "none"}; other options include \code{"cc_prop"}, \code{"miss_ind"}, \code{"num_miss"}, \code{"best"} case scenario, and \code{"worst"} case scenario, which call the named approaches after imputing.
 #' @return
 #' \item{data}{multiple imputed dataset (mids) object, returned by the mice function}
 #' \item{fit}{fitted regression model object.}
@@ -95,6 +95,15 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                       covar = covar,
                                       data = imp_dat_b,
                                       family = family)
+        #### Fit the model
+        imp_fit_b = imp_dat_b$fit
+      } else if (post_imputation %in% c("best", "worst")) {
+        #### Replace unimputed values with best or worst case scenario
+        imp_dat_b = case_approach(outcome = outcome,
+                                  covar = covar,
+                                  data = imp_dat_b,
+                                  family = family,
+                                  best = post_imputation == "best")
         #### Fit the model
         imp_fit_b = imp_dat_b$fit
       } else if (post_imputation == "none") {
