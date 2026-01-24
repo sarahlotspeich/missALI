@@ -37,5 +37,6 @@ avg_predict_imp = function(imp_res) {
   }
   # Calculate average prediction
   pooled_pred = as.vector(pooled_pred / m)
+  names(pooled_pred) = as.character(1:length(pooled_pred))
   return(pooled_pred)
 }
