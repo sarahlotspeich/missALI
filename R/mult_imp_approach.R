@@ -110,16 +110,11 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                   best = post_imputation == "best")
         #### Fit the model
         imp_fit_b = imp_dat_b$fit
-      } else if (post_imputation %in% c("best", "worst")) {
-        #### Fit the model
-        imp_fit_b = glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp, covar), collapse = "+"))),
-                        family = family,
-                        data = imp_dat_b)
       } else if (post_imputation == "none") {
         #### Convert imputed numeric components --> binary
         imp_dat_b = create_bin_components(data = imp_dat_b)
         #### Fit the model
-        imp_fit_b = glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"))),
+        imp_fit_b = glm(formula = as.formula(paste(outcome, "~", paste(sub(pattern = "NUM_", replacement = "", x = c(ALI_comp_excl, covar)), collapse = "+"))),
                         family = family,
                         data = imp_dat_b)
       }
