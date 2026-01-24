@@ -124,6 +124,6 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
   }
 
   # Return list with the data and model
-  return(list(data = data,
+  return(list(data = imp_data,
               fit = summ_fit_imp))
 }
