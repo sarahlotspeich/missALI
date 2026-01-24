@@ -29,15 +29,9 @@ miss_ind_approach = function(outcome, covar = NULL, data, family) {
                       "CREAT_C_F", "HCST_F", "TRIG_F", "BP_DIASTOLIC_F","BP_SYSTOLIC_F")
 
   # Fit the model of interest
-  if (!is.null(covar)) {
-    fit_ind = glm(as.formula(paste(outcome, "~", paste(c(factor_ALI_comp, covar), collapse = "+"))),
-                  family = family,
-                  data = data)
-  } else {
-    fit_ind = glm(as.formula(paste(outcome, "~", paste(factor_ALI_comp, collapse = "+"))),
-                  family = family,
-                  data = data)
-  }
+  fit_ind = glm(as.formula(paste(outcome, "~", paste(c(factor_ALI_comp, covar), collapse = "+"))),
+                family = family,
+                data = data)
 
   # Return list with the data and model
   return(list(data = data,
