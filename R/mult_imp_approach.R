@@ -61,6 +61,8 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
       p = length(covar) + 3 ### number of coefficients = covar + int + num_ali + num_miss
     } else if (post_imputation == "none") {
       p = length(covar) + length(ALI_comp_excl) + 1 ### number of coefficients = covar + int + 8 comp
+    } else if (post_imputation %in% c("best", "worst")) {
+      p = length(covar) + length(ALI_comp) + 1 ### number of coefficients = covar + int + 8 comp
     } else if (post_imputation == "miss_ind") {
       p = length(covar) + 12 ### number of coefficients = covar + int + 10 comp
     }
@@ -106,6 +108,11 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                   best = post_imputation == "best")
         #### Fit the model
         imp_fit_b = imp_dat_b$fit
+      } else if (post_imputation %in% c("best", "worst")) {
+        #### Fit the model
+        imp_fit_b = glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp, covar), collapse = "+"))),
+                        family = family,
+                        data = imp_dat_b)
       } else if (post_imputation == "none") {
         #### Convert imputed numeric components --> binary
         imp_dat_b = create_bin_components(data = imp_dat_b)
