@@ -92,17 +92,10 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
   } else {
     if (use_glm) { ## Using generalized linear model (GLM)
       ## Save coefficients from each post-imputation model
-      if (post_imputation == "cc_prop") {
-        p = length(covar) + 2 ### number of coefficients = covar + int + prop
-      } else if (post_imputation == "num_miss") {
-        p = length(covar) + 3 ### number of coefficients = covar + int + num_ali + num_miss
-      } else if (post_imputation == "none") {
-        p = length(covar) + length(ALI_comp_excl) + 1 ### number of coefficients = covar + int + 8 comp
-      } else if (post_imputation %in% c("best", "worst")) {
-        p = length(covar) + length(ALI_comp) + 1 ### number of coefficients = covar + int + 8 comp
-      } else if (post_imputation == "miss_ind") {
-        p = length(covar) + 11 ### number of coefficients = covar + int + 10 comp
-      }
+      p = get_p(post_imputation = post_imputation,
+                covar = covar,
+                ALI_comp_excl = ALI_comp_excl,
+                ALI_comp = ALI_comp)
       per_imp_coeff = matrix(nrow = m, ncol = p)
       per_imp_vars = matrix(nrow = m, ncol = p)
       ## Loop over the imputed datasets
@@ -113,47 +106,17 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
         if (components == "numeric") {
           imp_dat_b = create_bin_components(data = imp_dat_b)
         }
-        ### Post-imputation complete-case proportion approach
-        if (post_imputation == "cc_prop") {
-          #### Calculate complete-case proportion ALI from it
-          imp_dat_b$PROP_UNHEALTHY = apply(X = imp_dat_b[, ALI_comp],
-                                           MARGIN = 1,
-                                           FUN = mean,
-                                           na.rm = TRUE)
-          #### Fit the model
-          imp_fit_b = glm(formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", covar), collapse = "+"))),
-                          family = family,
-                          data = imp_dat_b)
-        } else if (post_imputation == "num_miss") {
-          #### Create missingness indicators for remaining, unimputed values
-          imp_dat_b = num_miss_approach(outcome = outcome,
-                                        covar = covar,
-                                        data = imp_dat_b,
-                                        family = family)
-          #### Fit the model
-          imp_fit_b = imp_dat_b$fit
-        } else if (post_imputation == "miss_ind") {
-          #### Create missingness indicators for remaining, unimputed values
-          imp_dat_b = miss_ind_approach(outcome = outcome,
-                                        covar = covar,
-                                        data = imp_dat_b,
-                                        family = family)
-          #### Fit the model
-          imp_fit_b = imp_dat_b$fit
-        } else if (post_imputation %in% c("best", "worst")) {
-          #### Replace unimputed values with best or worst case scenario
-          imp_dat_b = case_approach(outcome = outcome,
-                                    covar = covar,
-                                    data = imp_dat_b,
-                                    family = family,
-                                    best = post_imputation == "best")
-          #### Fit the model
-          imp_fit_b = imp_dat_b$fit
-        }
+        ### Post-imputation approach
+        post_imp_dat_b = post_impute_data(post_imputation = post_imputation,
+                                          outcome = outcome,
+                                          covar = covar,
+                                          data = imp_dat_b,
+                                          family = family,
+                                          use_glm = use_glm)
         ### Save its coefficients to the matrix
-        per_imp_coeff[b,] = imp_fit_b$coefficients
+        per_imp_coeff[b,] = post_imp_dat_b$fit$coefficients
         ### And its standard errors
-        per_imp_vars[b, ] = diag(vcov(imp_fit_b))
+        per_imp_vars[b, ] = diag(vcov(post_imp_dat_b$fit))
       }
       ## Calculate pooled model estimates
       ### Coefficients
@@ -180,17 +143,10 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                              df = df_rubin))
     } else {
       ## Save coefficients from each post-imputation model
-      if (post_imputation == "cc_prop") {
-        p = length(covar) + 1### number of coefficients = covar + prop
-      } else if (post_imputation == "num_miss") {
-        p = length(covar) + 2 ### number of coefficients = covar + num_ali + num_miss
-      } else if (post_imputation == "none") {
-        p = length(covar) + length(ALI_comp_excl) ### number of coefficients = covar  + 8 comp
-      } else if (post_imputation %in% c("best", "worst")) {
-        p = length(covar) + length(ALI_comp) ### number of coefficients = covar + 8 comp
-      } else if (post_imputation == "miss_ind") {
-        p = length(covar) + 10 ### number of coefficients = covar + 10 comp
-      }
+      p = get_p(post_imputation = post_imputation,
+                covar = covar,
+                ALI_comp_excl = ALI_comp_excl,
+                ALI_comp = ALI_comp)
       per_imp_imp = matrix(nrow = m, ncol = p)
       ## Loop over the imputed datasets
       for (b in 1:m) {
@@ -200,57 +156,15 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
         if (components == "numeric") {
           imp_dat_b = create_bin_components(data = imp_dat_b)
         }
-
-        ### Post-imputation complete-case proportion approach
-        if (post_imputation == "cc_prop") {
-          #### Calculate complete-case proportion ALI from it
-          imp_dat_b$PROP_UNHEALTHY = apply(X = imp_dat_b[, ALI_comp],
-                                           MARGIN = 1,
-                                           FUN = mean,
-                                           na.rm = TRUE)
-          #### Fit the model
-          if (family == "binomial") {
-            imp_fit_b = ranger(
-              formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", covar), collapse = "+"))),
-              data = imp_dat_b,
-              num.trees = 500,
-              mtry = 2,
-              importance = "permutation",
-              probability = TRUE # For classification, to get class probabilities
-            )
-          }
-        } else if (post_imputation == "num_miss") {
-          #### Create missingness indicators for remaining, unimputed values
-          imp_dat_b = num_miss_approach(outcome = outcome,
-                                        covar = covar,
-                                        data = imp_dat_b,
-                                        family = family,
-                                        use_glm = use_glm)
-          #### Fit the model
-          imp_fit_b = imp_dat_b$fit
-        } else if (post_imputation == "miss_ind") {
-          #### Create missingness indicators for remaining, unimputed values
-          imp_dat_b = miss_ind_approach(outcome = outcome,
-                                        covar = covar,
-                                        data = imp_dat_b,
-                                        family = family,
-                                        use_glm = use_glm)
-          #### Fit the model
-          imp_fit_b = imp_dat_b$fit
-        } else if (post_imputation %in% c("best", "worst")) {
-          #### Replace unimputed values with best or worst case scenario
-          imp_dat_b = case_approach(outcome = outcome,
-                                    covar = covar,
-                                    data = imp_dat_b,
-                                    family = family,
-                                    best = post_imputation == "best",
-                                    use_glm = use_glm)
-          #### Fit the model
-          imp_fit_b = imp_dat_b$fit
-        }
-
+        ### Post-imputation approach
+        post_imp_dat_b = post_impute_data(post_imputation = post_imputation,
+                                          outcome = outcome,
+                                          covar = covar,
+                                          data = imp_dat_b,
+                                          family = family,
+                                          use_glm = use_glm)
         ### Save its variable importance to the matrix
-        per_imp_imp[b,] = importance(imp_fit_b)
+        per_imp_imp[b,] = importance(post_imp_dat_b$fit)
       }
       ## Calculate pooled model estimates
       ### Coefficients
