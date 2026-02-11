@@ -134,7 +134,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
       lambda = ((1 + 1 / m) * vb) / vt       # fraction missing information
       df_rubin = (m - 1) / (lambda ^ 2)         # Rubin df
       ## Pool the coefficients and variance estimates
-      summ_fit_imp = data.frame(term = names(imp_fit_b$coefficients),
+      summ_fit_imp = data.frame(term = names(post_imp_dat_b$fit$coefficients),
                                 estimate = beta_pooled,
                                 std.error = se_beta_pooled,
                                 statistic = beta_pooled / se_beta_pooled,
