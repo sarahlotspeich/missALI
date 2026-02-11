@@ -43,7 +43,7 @@ avg_predict_imp = function(imp_res) {
         exp(pred_imp_logodds) / (1 + exp(pred_imp_logodds))
     } else {
       pooled_pred = pooled_pred +
-        mat_imp_dat_b$fit$predictions[, 1]
+        imp_dat_fit_b$fit$predictions[, 1]
     }
   }
   # Calculate average prediction
