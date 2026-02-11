@@ -5,7 +5,7 @@
 \title{Complete-case proportion approach to fitting regression models with missing ALI components
 This function returns the dataset with an added column for the proportion of unhealthy ALI components (out of those that were nonmissing) and the fitted model.}
 \usage{
-cc_prop_approach(outcome, covar = NULL, data, family)
+cc_prop_approach(outcome, covar = NULL, data, family, use_glm = TRUE)
 }
 \arguments{
 \item{outcome}{name of the outcome of the model (like \code{outcome = "disease"}).}
@@ -15,6 +15,8 @@ cc_prop_approach(outcome, covar = NULL, data, family)
 \item{data}{dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.}
 
 \item{family}{description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.}
+
+\item{use_glm}{logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.}
 }
 \value{
 \item{data}{dataframe with proportion of unhealthy among nonmissing ALI components.}
