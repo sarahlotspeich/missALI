@@ -2,8 +2,7 @@
 % Please edit documentation in R/mult_imp_approach.R
 \name{mult_imp_approach}
 \alias{mult_imp_approach}
-\title{Multiple imputation approach to fitting regression models with missing ALI components
-This function returns a list of all imputed datasets and the fitted model.}
+\title{Multiple imputation approach to fitting regression models with missing ALI components}
 \usage{
 mult_imp_approach(
   outcome,
@@ -12,7 +11,8 @@ mult_imp_approach(
   family,
   components = "binary",
   m = 100,
-  post_imputation = "none"
+  post_imputation = "none",
+  use_glm = TRUE
 )
 }
 \arguments{
@@ -29,6 +29,8 @@ mult_imp_approach(
 \item{m}{number of imputations. Default is \code{m = 100}.}
 
 \item{post_imputation}{optional, post-imputation transformation of the ALI components before fitting the model. Default is \code{post_imputation = "none"}; other options include \code{"cc_prop"}, \code{"miss_ind"}, \code{"num_miss"}, \code{"best"} case scenario, and \code{"worst"} case scenario, which call the named approaches after imputing.}
+
+\item{use_glm}{logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.}
 }
 \value{
 \item{data}{multiple imputed dataset (mids) object, returned by the mice function}
@@ -38,5 +40,4 @@ mult_imp_approach(
 }
 \description{
 Multiple imputation approach to fitting regression models with missing ALI components
-This function returns a list of all imputed datasets and the fitted model.
 }
