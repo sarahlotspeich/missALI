@@ -2,10 +2,9 @@
 % Please edit documentation in R/num_miss_approach.R
 \name{num_miss_approach}
 \alias{num_miss_approach}
-\title{Count of missing components approach to fitting regression models with missing ALI components
-This function returns the dataset with added columns for the numbers of unhealthy and missing ALI components and the fitted model.}
+\title{Count of missing components approach to fitting regression models with missing ALI components}
 \usage{
-num_miss_approach(outcome, covar = NULL, data, family)
+num_miss_approach(outcome, covar = NULL, data, family, use_glm = TRUE)
 }
 \arguments{
 \item{outcome}{name of the outcome of the model (like \code{outcome = "disease"}).}
@@ -15,6 +14,8 @@ num_miss_approach(outcome, covar = NULL, data, family)
 \item{data}{dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.}
 
 \item{family}{description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.}
+
+\item{use_glm}{logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.}
 }
 \value{
 \item{data}{dataframe with counts of unhealthy and missing ALI components.}
@@ -22,5 +23,4 @@ num_miss_approach(outcome, covar = NULL, data, family)
 }
 \description{
 Count of missing components approach to fitting regression models with missing ALI components
-This function returns the dataset with added columns for the numbers of unhealthy and missing ALI components and the fitted model.
 }
