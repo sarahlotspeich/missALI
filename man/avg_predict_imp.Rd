@@ -2,8 +2,7 @@
 % Please edit documentation in R/avg_predict_imp.R
 \name{avg_predict_imp}
 \alias{avg_predict_imp}
-\title{Prediction after multiple imputation approach to fitting regression models with missing ALI components
-This function returns average predictions per patient applying pooled coefficients to each imputed dataset}
+\title{Prediction after multiple imputation approach to fitting regression models with missing ALI components}
 \usage{
 avg_predict_imp(imp_res)
 }
@@ -15,5 +14,4 @@ vector of average predictions per patient
 }
 \description{
 Prediction after multiple imputation approach to fitting regression models with missing ALI components
-This function returns average predictions per patient applying pooled coefficients to each imputed dataset
 }
