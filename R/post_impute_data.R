@@ -20,7 +20,7 @@ ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
 ALI_comp_excl = ALI_comp[-c(6, 7)] ## Remove the 6th and 7th element of ALI_comp
 post_impute_data = function(post_imputation, outcome, covar, data, family, components, use_glm) {
   ### Replace with names of numeric components, if requested
-  if (imp_res$components == "numeric") {
+  if (components == "numeric") {
     ALI_comp = paste0("NUM_", ALI_comp)
     ALI_comp_excl = paste0("NUM_", ALI_comp_excl)
   }
