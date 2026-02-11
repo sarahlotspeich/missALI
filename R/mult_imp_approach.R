@@ -86,7 +86,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
       ### Coefficients
       imp_pooled = colMeans(per_imp_imp)
       ## Pool the coefficients and variance estimates
-      summ_fit_imp = data.frame(term = names(importance(imp_fit_b)),
+      summ_fit_imp = data.frame(term = names(imp_fit_b$variable.importance),
                                 importance = imp_pooled)
     }
   } else {
@@ -166,7 +166,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                           components = components,
                                           use_glm = use_glm)
         ### Save its variable importance to the matrix
-        per_imp_imp[b,] = importance(post_imp_dat_b$fit)
+        per_imp_imp[b,] = imp_fit_b$variable.importance
       }
       ## Calculate pooled model estimates
       ### Coefficients
