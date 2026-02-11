@@ -1,7 +1,6 @@
-<p style="display:inline-block;">
-  <img src="hex.png" width="200" title="Woman with long hair wearing a crown, lab coat, and pageant sash that says miss ALI is holding a clipboard">
-  <h1>missALI: Overcoming missing data to predict hospitalization from the ALI</h1>
-</p
+`missALI`: Overcoming missing data to predict hospitalization from the
+ALI
+================
 
 ## Installation
 
@@ -419,18 +418,18 @@ mod_log_mi_num = mult_imp_approach(outcome = "ANY_ADMIT",
 mod_log_mi_num$fit
 ```
 
-    ##                term    estimate   std.error  statistic          df      p.value
-    ## 1       (Intercept) -2.98780262 0.342866210 -8.7141939  30754.6029 1.536205e-18
-    ## 2               A1C  0.54034597 0.238004166  2.2703215    877.7611 9.882851e-01
-    ## 3               ALB  1.02147547 0.649090938  1.5737016  10113.9067 9.422061e-01
-    ## 4               BMI  0.40645364 0.171734548  2.3667552  24635.7568 9.910238e-01
-    ## 5              CHOL -0.12601664 0.200467517 -0.6286137   2790.6196 2.648267e-01
-    ## 6               CRP  0.12154045 0.526804589  0.2307126    129.4461 5.910488e-01
-    ## 7              TRIG  0.21741857 0.202240743  1.0750483   1992.0053 8.587584e-01
-    ## 8      BP_DIASTOLIC -0.18053696 0.372986178 -0.4840312 224377.2101 3.141821e-01
-    ## 9       BP_SYSTOLIC  0.05088545 0.256753434  0.1981880   8842.0054 5.785487e-01
-    ## 10          SEXMale -0.02596025 0.168841185 -0.1537554 101225.6333 4.389014e-01
-    ## 11 AGE_AT_ENCOUNTER  0.02766951 0.006705603  4.1263262  24334.8434 9.999815e-01
+    ##                term      estimate   std.error   statistic       df      p.value
+    ## 1       (Intercept)  2.0806822939 1.685923318  1.23415002 732.9673 2.175426e-01
+    ## 2           NUM_A1C  0.2060634739 0.075812788  2.71805692 377.6921 6.869248e-03
+    ## 3           NUM_ALB -1.2136013572 0.294354358 -4.12292642 691.0548 4.195781e-05
+    ## 4           NUM_BMI -0.0045125384 0.011373052 -0.39677461 832.7415 6.916353e-01
+    ## 5          NUM_CHOL -0.0022668293 0.002806813 -0.80761689 517.2948 4.196824e-01
+    ## 6           NUM_CRP  0.0003487171 0.005284860  0.06598417  67.9008 9.475843e-01
+    ## 7          NUM_TRIG  0.0014585151 0.001008884  1.44567224 496.0649 1.489006e-01
+    ## 8  NUM_BP_DIASTOLIC -0.0230824482 0.013726343 -1.68161680 902.2360 9.298923e-02
+    ## 9   NUM_BP_SYSTOLIC  0.0123603353 0.010219097  1.20953308 670.0391 2.268847e-01
+    ## 10          SEXMale  0.0863593263 0.179896297  0.48005061 952.4947 6.313016e-01
+    ## 11 AGE_AT_ENCOUNTER  0.0221763155 0.006918991  3.20513732 910.9135 1.396956e-03
 
 ``` r
 # View the loggedEvents (from mice)
@@ -796,3 +795,166 @@ plot(roc_curve,
 ```
 
 ![](README_files/figure-gfm/unnamed-chunk-21-1.png)<!-- -->
+
+## Machine Learning
+
+If a **random forest** classifier is desired, rather than a logistic
+regression model, then set the `use_glm` argument to `FALSE`. For a
+binary outcome, we continue to let `family = "binomial"`.
+
+``` r
+# Allow each ALI component to be either healthy, unhealthy, or missing 
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_rf_ind = miss_ind_approach(outcome = "ANY_ADMIT", 
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                               data = hosp_dat, 
+                               family = "binomial", 
+                               use_glm = FALSE) 
+
+# View variable importance for the fitted model (instead of coefficients)
+mod_rf_ind$fit$variable.importance
+```
+
+    ##            A1C_F            ALB_F            BMI_F           CHOL_F 
+    ##     2.284890e-03     7.411921e-03     2.719114e-03     3.745180e-03 
+    ##            CRP_F        CREAT_C_F           HCST_F           TRIG_F 
+    ##     2.510257e-03    -1.317548e-04     1.950294e-04     2.419598e-03 
+    ##   BP_DIASTOLIC_F    BP_SYSTOLIC_F              SEX AGE_AT_ENCOUNTER 
+    ##     8.882667e-04     1.073922e-03     4.618686e-05     6.694078e-03
+
+``` r
+# View the predicted probabilities of Y = 1 and Y = 0
+mod_rf_ind$fit$predictions |> 
+  head()
+```
+
+    ##              1         0
+    ## [1,] 0.4196707 0.5803293
+    ## [2,] 0.1943173 0.8056827
+    ## [3,] 0.2311082 0.7688918
+    ## [4,] 0.1274709 0.8725291
+    ## [5,] 0.3365018 0.6634982
+    ## [6,] 0.2759037 0.7240963
+
+The resulting `mod_rf_ind` contains two named slots.
+
+1.  If you call `mod_rf_ind$data`, you get the `hosp_dat` object back
+    *but* with the missingness indicators applied to the 10 ALI
+    components. (The data used to fit the model.)
+2.  If you call `mod_rf_ind$fit`, you get the `ranger` fitted model
+    object, which you can then use to extract information like
+    `$variable.importance` and `$predictions`.
+
+We can also multiply impute the missing ALI components before applying
+the random forest classifier. The following code imputes the **binary
+ALI components** directly.
+
+``` r
+# Be reproducible, since multiple imputation is a random process
+set.seed(124)
+
+# Replace missing ALI components with imputations of either "healthy" or "unhealthy" 
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_rf_mi = mult_imp_approach(outcome = "ANY_ADMIT", 
+                              covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                              data = hosp_dat, 
+                              family = "binomial", 
+                              components = "binary", 
+                              m = 100, 
+                              post_imputation = "none", 
+                              use_glm = FALSE) 
+```
+
+    ## Warning: Number of logged events: 501
+
+``` r
+# View the average variable importance across all random forests (from ranger)
+mod_rf_mi$fit
+```
+
+    ##                term    importance
+    ## 1               A1C  0.0056348049
+    ## 2               ALB  0.0005275576
+    ## 3               BMI  0.0053987197
+    ## 4              CHOL  0.0065584198
+    ## 5               CRP  0.0300697896
+    ## 6              TRIG  0.0016964654
+    ## 7      BP_DIASTOLIC  0.0005153141
+    ## 8       BP_SYSTOLIC  0.0014959774
+    ## 9               SEX -0.0002242372
+    ## 10 AGE_AT_ENCOUNTER  0.0067941326
+
+``` r
+# Calculate predicted probabilities from logistic regression w/ multiple imputation
+pred_prob_rf_mi = mod_rf_mi |> 
+  avg_predict_imp()
+## View the first few
+pred_prob_mi |> 
+  head()
+```
+
+    ##         1         2         3         4         5         6 
+    ## 0.5082718 0.2611477 0.2973020 0.1261773 0.3508758 0.3556054
+
+``` r
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_prob_rf_mi)
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+plot(roc_curve, 
+     col = "#DF7A53", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-24-1.png)<!-- -->
+
+As with the statistical models, we can choose from various
+post-imputation options to handle residual missingness in the two ALI
+components (homocystein and CRP)/
+
+``` r
+# Be reproducible, since multiple imputation is a random process
+set.seed(124)
+
+# Replace missing ALI components with imputations of either "healthy" or "unhealthy" 
+## and fit a model with each component separately as predictors (+ other covariates)
+## use missingness indicators for residual missingness 
+mod_rf_mi_miss_ind = mult_imp_approach(outcome = "ANY_ADMIT", 
+                                       covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                       data = hosp_dat, 
+                                       family = "binomial", 
+                                       components = "binary", 
+                                       m = 100, 
+                                       post_imputation = "miss_ind", 
+                                       use_glm = FALSE) 
+```
+
+    ## Warning: Number of logged events: 501
+
+``` r
+# Calculate predicted probabilities from logistic regression w/ multiple imputation
+pred_prob_rf_mi_miss_ind = mod_rf_mi_miss_ind |> 
+  avg_predict_imp()
+
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_prob_rf_mi_miss_ind)
+```
+
+    ## Setting levels: control = 0, case = 1
+
+    ## Setting direction: controls < cases
+
+``` r
+plot(roc_curve, 
+     col = "#2A9D8F", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+![](README_files/figure-gfm/unnamed-chunk-25-1.png)<!-- -->
