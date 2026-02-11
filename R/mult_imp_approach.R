@@ -147,7 +147,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
       p = get_p(post_imputation = post_imputation,
                 covar = covar,
                 ALI_comp_excl = ALI_comp_excl,
-                ALI_comp = ALI_comp)
+                ALI_comp = ALI_comp) - 1 ### subtract one since there's no intercept
       per_imp_imp = matrix(nrow = m, ncol = p)
       ## Loop over the imputed datasets
       for (b in 1:m) {
@@ -166,13 +166,13 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                           components = components,
                                           use_glm = use_glm)
         ### Save its variable importance to the matrix
-        per_imp_imp[b,] = imp_fit_b$variable.importance
+        per_imp_imp[b,] = post_imp_dat_b$fit$variable.importance
       }
       ## Calculate pooled model estimates
       ### Coefficients
-      imp_pooled = colMeans(per_imp_coeff)
+      imp_pooled = colMeans(per_imp_imp)
       ## Pool the coefficients and variance estimates
-      summ_fit_imp = data.frame(term = names(importance(imp_fit_b)),
+      summ_fit_imp = data.frame(term = names(post_imp_dat_b$fit$variable.importance),
                                 importance = imp_pooled)
     }
   }
