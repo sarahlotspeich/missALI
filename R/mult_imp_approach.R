@@ -178,7 +178,10 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
   # Return list with the data and model
   return(list(data = imp_data,
               fit = summ_fit_imp,
-              use_glm = use_glm,
               components = components,
-              post_imputation = post_imputation))
+              post_imputation = post_imputation,
+              outcome = outcome,
+              covar = covar,
+              family = family,
+              use_glm = use_glm))
 }
