@@ -112,6 +112,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                           covar = covar,
                                           data = imp_dat_b,
                                           family = family,
+                                          components = components,
                                           use_glm = use_glm)
         ### Save its coefficients to the matrix
         per_imp_coeff[b,] = post_imp_dat_b$fit$coefficients
@@ -162,6 +163,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
                                           covar = covar,
                                           data = imp_dat_b,
                                           family = family,
+                                          components = components,
                                           use_glm = use_glm)
         ### Save its variable importance to the matrix
         per_imp_imp[b,] = importance(post_imp_dat_b$fit)
