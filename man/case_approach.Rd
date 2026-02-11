@@ -2,10 +2,9 @@
 % Please edit documentation in R/case_approach.R
 \name{case_approach}
 \alias{case_approach}
-\title{Best/worst case scenario approach to fitting regression models with missing ALI components
-This function returns the dataset with missing values replaced by 0s (best case scenario) or 1s (worst case scenario) and the fitted model.}
+\title{Best/worst case scenario approach to fitting regression models with missing ALI components}
 \usage{
-case_approach(outcome, covar = NULL, data, family, best = TRUE)
+case_approach(outcome, covar = NULL, data, family, best = TRUE, use_glm = TRUE)
 }
 \arguments{
 \item{outcome}{name of the outcome of the model (like \code{outcome = "disease"}).}
@@ -17,6 +16,8 @@ case_approach(outcome, covar = NULL, data, family, best = TRUE)
 \item{family}{description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.}
 
 \item{best}{if \code{TRUE} (the default), then all missing ALI components are replaced with \code{"healthy"}; otherwise, they are replaced with \code{"unhealthy"}.}
+
+\item{use_glm}{logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.}
 }
 \value{
 \item{data}{dataframe with the factor versions of the ALI components (with missing values replaced by best/worst case scenario).}
@@ -24,5 +25,4 @@ case_approach(outcome, covar = NULL, data, family, best = TRUE)
 }
 \description{
 Best/worst case scenario approach to fitting regression models with missing ALI components
-This function returns the dataset with missing values replaced by 0s (best case scenario) or 1s (worst case scenario) and the fitted model.
 }
