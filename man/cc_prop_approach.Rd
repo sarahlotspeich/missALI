@@ -2,8 +2,7 @@
 % Please edit documentation in R/cc_prop_approach.R
 \name{cc_prop_approach}
 \alias{cc_prop_approach}
-\title{Complete-case proportion approach to fitting regression models with missing ALI components
-This function returns the dataset with an added column for the proportion of unhealthy ALI components (out of those that were nonmissing) and the fitted model.}
+\title{Complete-case proportion approach to fitting regression models with missing ALI components}
 \usage{
 cc_prop_approach(outcome, covar = NULL, data, family, use_glm = TRUE)
 }
@@ -24,5 +23,4 @@ cc_prop_approach(outcome, covar = NULL, data, family, use_glm = TRUE)
 }
 \description{
 Complete-case proportion approach to fitting regression models with missing ALI components
-This function returns the dataset with an added column for the proportion of unhealthy ALI components (out of those that were nonmissing) and the fitted model.
 }

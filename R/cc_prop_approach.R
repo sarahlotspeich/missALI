@@ -1,5 +1,4 @@
 #' Complete-case proportion approach to fitting regression models with missing ALI components
-#' This function returns the dataset with an added column for the proportion of unhealthy ALI components (out of those that were nonmissing) and the fitted model.
 #'
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
