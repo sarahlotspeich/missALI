@@ -32,6 +32,7 @@ avg_predict_imp = function(imp_res) {
                                      covar = imp_res$covar,
                                      data = imp_dat_b,
                                      family = imp_res$family,
+                                     components = imp_res$components,
                                      use_glm = imp_res$use_glm)
     if (imp_res$use_glm) {
       mat_imp_dat_b = model.matrix(object = formula(imp_dat_fit_b$fit),
