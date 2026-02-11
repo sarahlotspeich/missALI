@@ -1,16 +1,17 @@
 #' Missingness indicator approach to fitting regression models with missing ALI components
-#' This function returns the dataset with added factor columns for the ALI components (including missingess as a level) and the fitted model.
 #'
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
+#' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
 #' @return
 #' \item{data}{dataframe with the factor versions of the ALI components (with missingness as a level).}
 #' \item{fit}{fitted regression model object.}
 #' @export
 #' @importFrom dplyr mutate
-miss_ind_approach = function(outcome, covar = NULL, data, family) {
+#' @importFrom ranger ranger
+miss_ind_approach = function(outcome, covar = NULL, data, family, use_glm = TRUE) {
   # Create factor versions of ALI components with missingness indicators
   data = data |>
     mutate(A1C_F = make_miss_factor(x = A1C),
@@ -29,9 +30,24 @@ miss_ind_approach = function(outcome, covar = NULL, data, family) {
                       "CREAT_C_F", "HCST_F", "TRIG_F", "BP_DIASTOLIC_F","BP_SYSTOLIC_F")
 
   # Fit the model of interest
-  fit_ind = glm(as.formula(paste(outcome, "~", paste(c(factor_ALI_comp, covar), collapse = "+"))),
-                family = family,
-                data = data)
+  if (use_glm) { ## Using a generalized linear model (GLM)
+    fit_ind = glm(as.formula(paste(outcome, "~", paste(c(factor_ALI_comp, covar), collapse = "+"))),
+                  family = family,
+                  data = data)
+  } else { ## Using a random forest
+    if (family == "binomial") {
+      fit_ind = ranger(
+        formula = as.formula(paste(outcome, "~", paste(c(factor_ALI_comp, covar), collapse = "+"))),
+        data = data,
+        num.trees = 500,
+        mtry = 2,
+        importance = "permutation",
+        probability = TRUE # For classification, to get class probabilities
+      )
+    } else {
+      fit_ind = NULL
+    }
+  }
 
   # Return list with the data and model
   return(list(data = data,
