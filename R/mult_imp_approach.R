@@ -80,7 +80,7 @@ mult_imp_approach = function(outcome, covar = NULL, data, family, components = "
           )
         }
         ### Save its variable importance to the matrix
-        per_imp_imp[b,] = importance(imp_fit_b)
+        per_imp_imp[b,] = imp_fit_b$variable.importance
       }
       ## Calculate pooled model estimates
       ### Coefficients
