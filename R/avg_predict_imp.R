@@ -39,7 +39,7 @@ avg_predict_imp = function(imp_res) {
                                    data = imp_dat_fit_b$data)
       #imp_dat_b = imp_dat_b[, rownames(beta_pooled)] #### reorder cols to match beta
       #imp_dat_b = data.matrix(imp_dat_b) #### convert data from df --> matrix
-      pred_imp_logodds = t(mat_imp_dat_b %*% beta_pooled)
+      pred_imp_logodds = t(mat_imp_dat_b[, rownames(beta_pooled)] %*% beta_pooled)
       pooled_pred = pooled_pred +
         exp(pred_imp_logodds) / (1 + exp(pred_imp_logodds))
     } else {
