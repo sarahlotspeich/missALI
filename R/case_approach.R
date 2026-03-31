@@ -6,6 +6,7 @@
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param best if \code{TRUE} (the default), then all missing ALI components are replaced with \code{"healthy"}; otherwise, they are replaced with \code{"unhealthy"}.
 #' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
+#' @param comp_sep logical argument for whether the 10 ALI components should be modeled as separate covariates in the model or be combined into a composite proportion score.
 #' @return
 #' \item{data}{dataframe with the factor versions of the ALI components (with missing values replaced by best/worst case scenario).}
 #' \item{fit}{fitted regression model object.}
@@ -13,7 +14,7 @@
 #' @importFrom dplyr mutate_at
 #' @importFrom tidyr replace_na
 #' @importFrom ranger ranger
-case_approach = function(outcome, covar = NULL, data, family, best = TRUE, use_glm = TRUE) {
+case_approach = function(outcome, covar = NULL, data, family, best = TRUE, use_glm = TRUE, comp_sep = FALSE) {
   # Define vector of binary component names
   bin_ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
                    "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
@@ -32,22 +33,45 @@ case_approach = function(outcome, covar = NULL, data, family, best = TRUE, use_g
   }
 
   # Fit the model of interest
-  if (use_glm) { ## Using a generalized linear model (GLM)
-    fit_case = glm(as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, covar), collapse = "+"))),
-                   family = family,
-                   data = data)
-  } else { ## Using a random forest
-    if (family == "binomial") {
-      fit_case = ranger(
-        formula = as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, covar), collapse = "+"))),
-        data = data,
-        num.trees = 500,
-        mtry = 2,
-        importance = "permutation",
-        probability = TRUE # For classification, to get class probabilities
-      )
-    } else {
-      fit_case = NULL
+  if (comp_sep) {
+    if (use_glm) { ## Using a generalized linear model (GLM)
+      fit_case = glm(as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, covar), collapse = "+"))),
+                     family = family,
+                     data = data)
+    } else { ## Using a random forest
+      if (family == "binomial") {
+        fit_case = ranger(
+          formula = as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, covar), collapse = "+"))),
+          data = data,
+          num.trees = 500,
+          mtry = 2,
+          importance = "permutation",
+          probability = TRUE # For classification, to get class probabilities
+        )
+      } else {
+        fit_case = NULL
+      }
+    }
+  } else {
+    ## Calculates proportion of unhealthy components (after imputation)
+    data$CASE_ALI = rowSums(data[, bin_ALI_comp]) / 10
+    if (use_glm) { ## Using a generalized linear model (GLM)
+      fit_case = glm(as.formula(paste(outcome, "~ CASE_ALI +", paste(covar, collapse = "+"))),
+                     family = family,
+                     data = data)
+    } else { ## Using a random forest
+      if (family == "binomial") {
+        fit_case = ranger(
+          formula = as.formula(paste(outcome, "~ CASE_ALI +", paste(covar, collapse = "+"))),
+          data = data,
+          num.trees = 500,
+          mtry = 2,
+          importance = "permutation",
+          probability = TRUE # For classification, to get class probabilities
+        )
+      } else {
+        fit_case = NULL
+      }
     }
   }
 

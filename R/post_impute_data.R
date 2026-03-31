@@ -18,7 +18,7 @@ ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
 # Essentially, all HCST would be treated as the same and CREAT_C is redundant for A1C
 ## So, let's exclude them from our prediction model
 ALI_comp_excl = ALI_comp[-c(6, 7)] ## Remove the 6th and 7th element of ALI_comp
-post_impute_data = function(post_imputation, outcome, covar, data, family, components, use_glm) {
+post_impute_data = function(post_imputation, outcome, covar, data, family, components, use_glm, comp_sep) {
   ### Replace with names of numeric components, if requested
   if (components == "numeric") {
     ALI_comp = paste0("NUM_", ALI_comp)
@@ -53,7 +53,8 @@ post_impute_data = function(post_imputation, outcome, covar, data, family, compo
                               data = data,
                               family = family,
                               best = post_imputation == "best",
-                              use_glm = use_glm)
+                              use_glm = use_glm,
+                              comp_sep = comp_sep)
   } else if (post_imputation == "none") {
     if (use_glm) { ## Using a generalized linear model (GLM)
       imp_dat_b = list(data = data,

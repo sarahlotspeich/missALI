@@ -4,7 +4,15 @@
 \alias{case_approach}
 \title{Best/worst case scenario approach to fitting regression models with missing ALI components}
 \usage{
-case_approach(outcome, covar = NULL, data, family, best = TRUE, use_glm = TRUE)
+case_approach(
+  outcome,
+  covar = NULL,
+  data,
+  family,
+  best = TRUE,
+  use_glm = TRUE,
+  comp_sep = FALSE
+)
 }
 \arguments{
 \item{outcome}{name of the outcome of the model (like \code{outcome = "disease"}).}
@@ -18,6 +26,8 @@ case_approach(outcome, covar = NULL, data, family, best = TRUE, use_glm = TRUE)
 \item{best}{if \code{TRUE} (the default), then all missing ALI components are replaced with \code{"healthy"}; otherwise, they are replaced with \code{"unhealthy"}.}
 
 \item{use_glm}{logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.}
+
+\item{comp_sep}{logical argument for whether the 10 ALI components should be modeled as separate covariates in the model or be combined into a composite proportion score.}
 }
 \value{
 \item{data}{dataframe with the factor versions of the ALI components (with missing values replaced by best/worst case scenario).}
