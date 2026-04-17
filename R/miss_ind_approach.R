@@ -31,7 +31,14 @@ miss_ind_approach = function(outcome, covar = NULL, data, family, use_glm = TRUE
 
   # Fit the model of interest
   if (use_glm) { ## Using a generalized linear model (GLM)
-    fit_ind = glm(as.formula(paste(outcome, "~", paste(c(factor_ALI_comp, covar), collapse = "+"))),
+    ## Count how many unique levels per factor variable
+    ### Any variables that are constant (only one level) are excluded
+    count_levels = apply(X = data[, factor_ALI_comp],
+                         MARGIN = 2,
+                         FUN = function(x) length(unique(x)))
+    warning(paste("The following variables were constant and excluded from the model:",
+                  paste(factor_ALI_comp[count_levels == 1], collapse = ", ")))
+    fit_ind = glm(as.formula(paste(outcome, "~", paste(c(factor_ALI_comp[count_levels > 1], covar), collapse = "+"))),
                   family = family,
                   data = data)
   } else { ## Using a random forest
