@@ -2,6 +2,7 @@
 #'
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
+#' @param zeros optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
@@ -12,7 +13,16 @@
 #' @importFrom dplyr select group_by summarize left_join
 #' @importFrom tidyr gather
 #' @importFrom ranger ranger
-cc_prop_approach = function(outcome, covar = NULL, data, family, use_glm = TRUE) {
+#' @importFrom pscl zeroinfl
+cc_prop_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE) {
+  # Create indicator of whether zero-inflation is needed
+  use_zeroinfl = !is.null(zeroinfl)
+
+  ## If intercept only, overwrite zeros
+  if ("intercept" %in% zeros & length(zeros) == 1) {
+    zeros = c("1")
+  }
+
   # Define vector of binary component names
   bin_ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
                    "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
@@ -30,10 +40,15 @@ cc_prop_approach = function(outcome, covar = NULL, data, family, use_glm = TRUE)
 
   # Fit the model of interest
   if (use_glm) { ## Using a generalized linear model (GLM)
-    fit_prop = glm(formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", covar),
-                                                                   collapse = "+"))),
-                   family = family,
-                   data = data)
+    if (use_zeroinfl) {
+      fit_prop = zeroinfl(as.formula(paste(outcome, "~", paste(c("PROP_UNHEALTHY", covar), collapse = "+"), "|", paste(zeros, collapse = "+"))),
+                          dist = family,
+                          data = data)
+    } else {
+      fit_prop = glm(formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", covar), collapse = "+"))),
+                     family = family,
+                     data = data)
+    }
   } else { ## Using a random forest
     if (family == "binomial") {
       fit_prop = ranger(
