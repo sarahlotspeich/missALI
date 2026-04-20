@@ -4,12 +4,21 @@
 \alias{num_miss_approach}
 \title{Count of missing components approach to fitting regression models with missing ALI components}
 \usage{
-num_miss_approach(outcome, covar = NULL, data, family, use_glm = TRUE)
+num_miss_approach(
+  outcome,
+  covar = NULL,
+  zeros = NULL,
+  data,
+  family,
+  use_glm = TRUE
+)
 }
 \arguments{
 \item{outcome}{name of the outcome of the model (like \code{outcome = "disease"}).}
 
 \item{covar}{optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).}
+
+\item{zeros}{optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.}
 
 \item{data}{dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.}
 
