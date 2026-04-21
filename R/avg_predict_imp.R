@@ -30,6 +30,7 @@ avg_predict_imp = function(imp_res) {
     imp_dat_fit_b = post_impute_data(post_imputation = imp_res$post_imputation,
                                      outcome = imp_res$outcome,
                                      covar = imp_res$covar,
+                                     zeros = imp_res$zeros,
                                      data = imp_dat_b,
                                      family = imp_res$family,
                                      components = imp_res$components,
