@@ -18,7 +18,18 @@ ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
 # Essentially, all HCST would be treated as the same and CREAT_C is redundant for A1C
 ## So, let's exclude them from our prediction model
 ALI_comp_excl = ALI_comp[-c(6, 7)] ## Remove the 6th and 7th element of ALI_comp
-post_impute_data = function(post_imputation, outcome, covar, data, family, components, use_glm, comp_sep) {
+#' @importFrom mice mice pool complete
+#' @importFrom ranger ranger
+#' @importFrom pscl zeroinfl
+post_impute_data = function(post_imputation, outcome, covar, zeros, data, family, components, use_glm, comp_sep) {
+  # Create indicator of whether zero-inflation is needed
+  use_zeroinfl = !is.null(zeros)
+
+  ## If intercept only, overwrite zeros
+  if ("intercept" %in% zeros & length(zeros) == 1) {
+    zeros = c("1")
+  }
+
   ### Replace with names of numeric components, if requested
   if (components == "numeric") {
     ALI_comp = paste0("NUM_", ALI_comp)
@@ -29,6 +40,7 @@ post_impute_data = function(post_imputation, outcome, covar, data, family, compo
     #### Calculate complete-case proportion ALI from it
     imp_dat_b = cc_prop_approach(outcome = outcome,
                                  covar = covar,
+                                 zeros = zeros,
                                  data = data,
                                  family = family,
                                  use_glm = use_glm)
@@ -36,6 +48,7 @@ post_impute_data = function(post_imputation, outcome, covar, data, family, compo
     #### Create missingness indicators for remaining, unimputed values
     imp_dat_b = num_miss_approach(outcome = outcome,
                                   covar = covar,
+                                  zeros = zeros,
                                   data = data,
                                   family = family,
                                   use_glm = use_glm)
@@ -43,6 +56,7 @@ post_impute_data = function(post_imputation, outcome, covar, data, family, compo
     #### Create missingness indicators for remaining, unimputed values
     imp_dat_b = miss_ind_approach(outcome = outcome,
                                   covar = covar,
+                                  zeros = zeros,
                                   data = data,
                                   family = family,
                                   use_glm = use_glm)
@@ -50,6 +64,7 @@ post_impute_data = function(post_imputation, outcome, covar, data, family, compo
     #### Replace unimputed values with best or worst case scenario
     imp_dat_b = case_approach(outcome = outcome,
                               covar = covar,
+                              zeros = zeros,
                               data = data,
                               family = family,
                               best = post_imputation == "best",
@@ -57,10 +72,15 @@ post_impute_data = function(post_imputation, outcome, covar, data, family, compo
                               comp_sep = comp_sep)
   } else if (post_imputation == "none") {
     if (use_glm) { ## Using a generalized linear model (GLM)
-      imp_dat_b = list(data = data,
-                       fit = glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"))),
-                                 family = family,
-                                 data = data))
+      if (use_zeroinfl) {
+        imp_dat_b = list(data = data,
+                         fit = zeroinfl(as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"), "|", paste(zeros, collapse = "+"))),
+                                        dist = family))
+      } else {
+        imp_dat_b = list(data = data,
+                         fit = glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"))),
+                                   family = family))
+      }
     } else { ## Using a random forest
       ### Fit random forest
       if (family == "binomial") {
