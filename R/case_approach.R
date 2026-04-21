@@ -2,6 +2,7 @@
 #'
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
+#' @param zeros optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param best if \code{TRUE} (the default), then all missing ALI components are replaced with \code{"healthy"}; otherwise, they are replaced with \code{"unhealthy"}.
@@ -14,7 +15,16 @@
 #' @importFrom dplyr mutate_at
 #' @importFrom tidyr replace_na
 #' @importFrom ranger ranger
-case_approach = function(outcome, covar = NULL, data, family, best = TRUE, use_glm = TRUE, comp_sep = FALSE) {
+#' @importFrom pscl zeroinfl
+case_approach = function(outcome, covar = NULL, zeros = NULL, data, family, best = TRUE, use_glm = TRUE, comp_sep = FALSE) {
+  # Create indicator of whether zero-inflation is needed
+  use_zeroinfl = !is.null(zeroinfl)
+
+  ## If intercept only, overwrite zeros
+  if ("intercept" %in% zeros & length(zeros) == 1) {
+    zeros = c("1")
+  }
+
   # Define vector of binary component names
   bin_ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
                    "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
@@ -35,9 +45,15 @@ case_approach = function(outcome, covar = NULL, data, family, best = TRUE, use_g
   # Fit the model of interest
   if (comp_sep) {
     if (use_glm) { ## Using a generalized linear model (GLM)
-      fit_case = glm(as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, covar), collapse = "+"))),
-                     family = family,
-                     data = data)
+      if (use_zeroinfl) {
+        fit_case = zeroinfl(as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, covar), collapse = "+"), "|", paste(zeros, collapse = "+"))),
+                            dist = family,
+                            data = data)
+      } else {
+        fit_case = glm(as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, covar), collapse = "+"))),
+                       family = family,
+                       data = data)
+      }
     } else { ## Using a random forest
       if (family == "binomial") {
         fit_case = ranger(
@@ -56,9 +72,15 @@ case_approach = function(outcome, covar = NULL, data, family, best = TRUE, use_g
     ## Calculates proportion of unhealthy components (after imputation)
     data$CASE_ALI = rowSums(data[, bin_ALI_comp]) / 10
     if (use_glm) { ## Using a generalized linear model (GLM)
-      fit_case = glm(as.formula(paste(outcome, "~ CASE_ALI +", paste(covar, collapse = "+"))),
-                     family = family,
-                     data = data)
+      if (use_zeroinfl) {
+        fit_case = zeroinfl(as.formula(paste(outcome, "~ CASE_ALI +", paste(covar, collapse = "+"), "|", paste(zeros, collapse = "+"))),
+                            dist = family,
+                            data = data)
+      } else {
+        fit_case = glm(as.formula(paste(outcome, "~ CASE_ALI +", paste(covar, collapse = "+"))),
+                       family = family,
+                       data = data)
+      }
     } else { ## Using a random forest
       if (family == "binomial") {
         fit_case = ranger(
