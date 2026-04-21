@@ -18,7 +18,7 @@
 #' @importFrom pscl zeroinfl
 case_approach = function(outcome, covar = NULL, zeros = NULL, data, family, best = TRUE, use_glm = TRUE, comp_sep = FALSE) {
   # Create indicator of whether zero-inflation is needed
-  use_zeroinfl = !is.null(zeroinfl)
+  use_zeroinfl = !is.null(zeros)
 
   ## If intercept only, overwrite zeros
   if ("intercept" %in% zeros & length(zeros) == 1) {

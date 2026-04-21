@@ -15,7 +15,7 @@
 #' @importFrom pscl zeroinfl
 miss_ind_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE) {
   # Create indicator of whether zero-inflation is needed
-  use_zeroinfl = !is.null(zeroinfl)
+  use_zeroinfl = !is.null(zeros)
 
   ## If intercept only, overwrite zeros
   if ("intercept" %in% zeros & length(zeros) == 1) {
