@@ -75,11 +75,13 @@ post_impute_data = function(post_imputation, outcome, covar, zeros, data, family
       if (use_zeroinfl) {
         imp_dat_b = list(data = data,
                          fit = zeroinfl(as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"), "|", paste(zeros, collapse = "+"))),
-                                        dist = family))
+                                        dist = family,
+                                        data = data))
       } else {
         imp_dat_b = list(data = data,
                          fit = glm(formula = as.formula(paste(outcome, "~", paste(c(ALI_comp_excl, covar), collapse = "+"))),
-                                   family = family))
+                                   family = family,
+                                   data = data))
       }
     } else { ## Using a random forest
       ### Fit random forest
