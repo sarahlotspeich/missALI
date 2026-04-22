@@ -5,7 +5,7 @@
 #' @export
 #' @importFrom mice complete
 #' @importFrom dplyr mutate mutate_at
-avg_predict_imp = function(imp_res) {
+predict_imp = function(imp_res) {
   # Get constants from list
   n = nrow(imp_res$data$data) ## number of observations
   m = imp_res$data$m ## number of imputations
@@ -17,6 +17,11 @@ avg_predict_imp = function(imp_res) {
   }
 
   # Get predicted probabilities
+  ## Per-imputation
+  imp_pred = matrix(data = 0,
+                    nrow = n, ### one row per observation
+                    ncol = m) ### one column per imputation
+  ## Pooled (average)
   pooled_pred = matrix(data = 0,
                        nrow = 1,
                        ncol = n)
@@ -43,13 +48,19 @@ avg_predict_imp = function(imp_res) {
       pred_imp_logodds = t(mat_imp_dat_b[, rownames(beta_pooled)] %*% beta_pooled)
       pooled_pred = pooled_pred +
         exp(pred_imp_logodds) / (1 + exp(pred_imp_logodds))
+      imp_pred[, b] = exp(pred_imp_logodds) / (1 + exp(pred_imp_logodds))
     } else {
       pooled_pred = pooled_pred +
         imp_dat_fit_b$fit$predictions[, 1]
+      imp_pred[, b] = imp_dat_fit_b$fit$predictions[, 1]
     }
   }
   # Calculate average prediction
   pooled_pred = as.vector(pooled_pred / m)
   names(pooled_pred) = as.character(1:length(pooled_pred))
-  return(pooled_pred)
+  return(list(
+    imp_pred = imp_pred,
+    pooled_pred = pooled_pred
+    )
+    )
 }
