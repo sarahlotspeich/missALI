@@ -12,6 +12,7 @@ kfold_validate(
   family,
   miss_method = "none",
   use_glm = TRUE,
+  comp_sep = FALSE,
   folds = 5
 )
 }
@@ -26,9 +27,11 @@ kfold_validate(
 
 \item{family}{description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.}
 
-\item{miss_method}{missing data method. Default is \code{miss_method = "cc_prop"}; other options include \code{"num_miss"}, \code{"best"} case scenario, and \code{"worst"} case scenario.}
+\item{miss_method}{missing data method. Default is \code{miss_method = "cc_prop"}; other options include \code{"num_miss"}, \code{"best"} case scenario, \code{"worst"} case scenario, and missingness categories (\code{"cat"}).}
 
 \item{use_glm}{logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.}
+
+\item{comp_sep}{logical argument for whether the 10 ALI components should be modeled as separate covariates in the model or be combined into a composite proportion score. Default is \code{comp_sep = FALSE} (summary score).}
 
 \item{folds}{number of folds. Default is \code{folds = 5}.}
 }
