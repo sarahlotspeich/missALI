@@ -1,4 +1,4 @@
-#' Missingness indicator approach to fitting regression models with missing ALI components
+#' Missingness as a category approach to fitting regression models with missing ALI components
 #'
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the outcome model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
@@ -13,7 +13,7 @@
 #' @importFrom dplyr mutate
 #' @importFrom ranger ranger
 #' @importFrom pscl zeroinfl
-miss_ind_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE) {
+miss_cat_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE) {
   # Create indicator of whether zero-inflation is needed
   use_zeroinfl = !is.null(zeros)
 

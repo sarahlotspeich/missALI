@@ -54,7 +54,7 @@ post_impute_data = function(post_imputation, outcome, covar, zeros, data, family
                                   use_glm = use_glm)
   } else if (post_imputation == "miss_ind") {
     #### Create missingness indicators for remaining, unimputed values
-    imp_dat_b = miss_ind_approach(outcome = outcome,
+    imp_dat_b = miss_cat_approach(outcome = outcome,
                                   covar = covar,
                                   zeros = zeros,
                                   data = data,
