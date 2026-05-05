@@ -84,6 +84,9 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
             family = family,
             use_glm = use_glm
             )
+          test = make_all_miss_factor(
+            data = test
+          )
         } else {
           warning("The missingness as a category approach can only be used with the separate components model. Please set \\code{comp_sep = TRUE} and try again.")
         }
