@@ -66,3 +66,20 @@ calc_case_ali = function(data, best, comp_sep = FALSE) {
   ## Return data with added column: CASE_ALI
   return(data)
 }
+
+# Create 3-level factor versions of each component: unhealthy, healthy, missing
+#' @importFrom dplyr mutate
+make_all_miss_factor = function(data) {
+  # Create factor versions of ALI components with missingness indicators
+  data = data |>
+    mutate(A1C_F = make_miss_factor(x = A1C),
+           ALB_F = make_miss_factor(x = ALB),
+           BMI_F = make_miss_factor(x = BMI),
+           CHOL_F = make_miss_factor(x = CHOL),
+           CRP_F = make_miss_factor(x = CRP),
+           CREAT_C_F = make_miss_factor(x = CREAT_C),
+           HCST_F = make_miss_factor(x = HCST),
+           TRIG_F = make_miss_factor(x = TRIG),
+           BP_DIASTOLIC_F = make_miss_factor(x = BP_DIASTOLIC),
+           BP_SYSTOLIC_F = make_miss_factor(x = BP_SYSTOLIC))
+}
