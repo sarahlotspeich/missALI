@@ -26,7 +26,7 @@ kfold_roc = function(kfold_validate_res, plot_folds = 1, overlay_average = TRUE,
     ### Add row with sensitivity, specificity at all thresholds for kth fold
     plot_roc_df = rbind(plot_roc_df,
                         data.frame(fold = k,
-                                   coords(kfold_log_best$all_fold_res[[k]]$test_roc)))
+                                   coords(kfold_validate_res$all_fold_res[[k]]$test_roc)))
   }
 
   ## Plot ROC curve(s) using ggplot2
