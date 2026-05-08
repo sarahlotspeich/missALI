@@ -14,8 +14,9 @@
 #' \item{all_fold_res}{list of lists containg all results from each fold (including trained model, test predictions, and the receiver operating characteristic (ROC) curve)}
 #' @export
 #' @importFrom pROC roc auc
+#' @importFrom ranger predict
 
-kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, miss_method = "none", use_glm = TRUE, comp_sep = FALSE, folds = 5) {
+kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, miss_method = "cc_prop", use_glm = TRUE, comp_sep = FALSE, folds = 5) {
   # Randomly assign folds
   data_folds = sample(
     x = 1:folds,
@@ -33,8 +34,10 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
     test = data[data_folds != k, ]
     ## Fit the model + missing data approach using train data
     ### And add corresponding ALI column(s) to test data for prediction
-    if (use_glm) {
-      if (miss_method == "cc_prop") {
+    if (miss_method == "cc_prop") {
+      if (comp_sep) {
+        warning("The complete-case proportion approach can only be used with the summary score model. Please set \\code{comp_sep = FALSE} and try again.")
+      } else {
         train_res = cc_prop_approach(
           outcome = outcome,
           covar = covar,
@@ -42,88 +45,91 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
           data = train,
           family = family,
           use_glm = use_glm
-          )
+        )
         test = calc_cc_prop_ali(
           data = test
-          )
-      } else if (miss_method == "num_miss") {
-        train_res = num_miss_approach(
+        )
+      }
+    } else if (miss_method == "num_miss") {
+      train_res = num_miss_approach(
+        outcome = outcome,
+        covar = covar,
+        zeros = zeros,
+        data = train,
+        family = family,
+        use_glm = use_glm
+      )
+      test = calc_num_miss_ali(
+        data = test
+      )
+    } else if (miss_method %in% c("best", "worst")) {
+      train_res = case_approach(
+        outcome = outcome,
+        covar = covar,
+        zeros = zeros,
+        data = train,
+        family = family,
+        best = miss_method == "best",
+        use_glm = use_glm,
+        comp_sep = comp_sep
+      )
+      test = calc_case_ali(
+        data = test,
+        best = miss_method == "best",
+        comp_sep = FALSE
+      )
+    } else if (miss_method == "cat") {
+      if (comp_sep) {
+        train_res = miss_cat_approach(
           outcome = outcome,
           covar = covar,
           zeros = zeros,
           data = train,
           family = family,
           use_glm = use_glm
-          )
-        test = calc_num_miss_ali(
+        )
+        test = make_all_miss_factor(
           data = test
-          )
-      } else if (miss_method %in% c("best", "worst")) {
-        train_res = case_approach(
-          outcome = outcome,
-          covar = covar,
-          zeros = zeros,
-          data = train,
-          family = family,
-          best = miss_method == "best",
-          use_glm = use_glm,
-          comp_sep = comp_sep
-          )
-        test = calc_case_ali(
-          data = test,
-          best = miss_method == "best",
-          comp_sep = FALSE
-          )
-      } else if (miss_method == "cat") {
-        if (comp_sep) {
-          train_res = miss_cat_approach(
-            outcome = outcome,
-            covar = covar,
-            zeros = zeros,
-            data = train,
-            family = family,
-            use_glm = use_glm
-            )
-          test = make_all_miss_factor(
-            data = test
-          )
-        } else {
-          warning("The missingness as a category approach can only be used with the separate components model. Please set \\code{comp_sep = TRUE} and try again.")
-        }
+        )
+      } else {
+        warning("The missingness as a category approach can only be used with the separate components model. Please set \\code{comp_sep = TRUE} and try again.")
       }
-      else {
-        warning("Please select a valid missing data correction from the available options.")
-      }
-      ### Calculate predictions using trained model x test data
-      #### Probs for logistic, counts for Poisson
+    } else {
+      warning("Please select a valid missing data correction from the available options.")
+    }
+    ### Calculate predictions using trained model x test data
+    if (use_glm) { #### Probs for logistic, counts for Poisson
       pred_test = predict(
         object = train_res$fit,
         type = "response",
         newdata = test
-        )
-
-      #### Make ROC curve object
-      roc_test = roc(
-        response = test[, outcome],
-        predictor = pred_test
-        )
-
-      #### Extract AUC from it
-      auc_test = auc(roc_test)
-      kfold_auc[k] = auc_test ##### save it to vector
-
-      ### Save all results from this fold to list (to be returned)
-      kfold_all[[k]] = list(
-        train_data = train,
-        test_data = test,
-        train_fit = train_res,
-        test_pred = pred_test,
-        test_roc = roc_test,
-        test_auc = auc_test
-        )
+      )
     } else {
-      warning("K-fold cross-validation is not currently implemented for random forest.")
+      pred_test = predict(
+        object = train_res$fit,
+        data = test,
+        type = "response"
+      )$predictions[, 1]
     }
+    #### Make ROC curve object
+    roc_test = roc(
+      response = test[, outcome],
+      predictor = pred_test
+    )
+
+    #### Extract AUC from it
+    auc_test = auc(roc_test)
+    kfold_auc[k] = auc_test ##### save it to vector
+
+    ### Save all results from this fold to list (to be returned)
+    kfold_all[[k]] = list(
+      train_data = train,
+      test_data = test,
+      train_fit = train_res,
+      test_pred = pred_test,
+      test_roc = roc_test,
+      test_auc = auc_test
+    )
   }
 
   # Return list with the data and model
