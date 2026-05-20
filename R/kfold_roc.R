@@ -71,17 +71,17 @@ kfold_roc = function(kfold_validate_res, plot_folds = 1, overlay_average = TRUE,
     theme_minimal(base_size = 14) +
     coord_equal() +
     annotate(geom = "text",
-             x = 0,
-             y = 1,
-             hjust = 0,
-             vjust = 1,
+             x = 1,
+             y = 0.07,
+             hjust = 1,
+             vjust = 0,
              label = "bold('Median AUC')",
              parse = TRUE) +
     annotate(geom = "text",
-             x = 0,
-             y = 0.93,
-             hjust = 0,
-             vjust = 1,
+             x = 1,
+             y = 0,
+             hjust = 1,
+             vjust = 0,
              label = label_auc) +
     labs(x = "1 - Specificity",
          y = "Sensitivity") +
