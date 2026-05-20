@@ -1,0 +1,1627 @@
+---
+title: "Analysis-For-Submission"
+author: "Sarah Lotspeich"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+```
+
+# Setup 
+
+```{r}
+# Load packages
+library(missALI) ## for models x missing data corrections 
+library(pROC) ## for ROC curves and AUC 
+
+# Read in data on hospitalizations (suppressed for privacy)
+hosp_dat = read.csv("~/Documents/missALI_prediction/data/deidentified_ali_hospitalizations.csv")
+```
+
+# Results {.tabset}
+
+## Model 1: Logistic Regression {.tabset}
+### Summary Measure Models {.tabset}
+#### Approach 1: Proportion of Non-Missing Components That Are Unhealthy 
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + complete-case proportion
+mod_log_prop = cc_prop_approach(outcome = "ANY_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "binomial") 
+
+# View the fitted model summary
+mod_log_prop$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_log_prop = mod_log_prop$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_prop)
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the logistic regression model with complete-case proportion ALI
+kfold_log_cc_prop = kfold_validate(outcome = "ANY_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   data = hosp_dat, 
+                                   family = "binomial", 
+                                   miss_method = "cc_prop", 
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_cc_prop$all_fold_auc
+median(kfold_log_cc_prop$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_cc_prop |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 2: Counts of Unhealthy and Missing Components 
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + count of missing / unhealthy
+mod_log_num = num_miss_approach(outcome = "ANY_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "binomial") 
+
+# View the fitted model summary
+mod_log_num$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_log_num = mod_log_num$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_num)
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the logistic regression model with complete-case proportion ALI
+kfold_log_num_miss = kfold_validate(outcome = "ANY_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                    data = hosp_dat, 
+                                    family = "binomial", 
+                                    miss_method = "num_miss", 
+                                    folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_num_miss$all_fold_auc
+median(kfold_log_num_miss$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_num_miss |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 3a: Best-Case Imputation
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + best-case imputation
+mod_log_best = case_approach(outcome = "ANY_ADMIT", 
+                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                             data = hosp_dat, 
+                             family = "binomial", 
+                             best = TRUE) 
+
+# View the fitted model summary
+mod_log_best$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_log_best = mod_log_best$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_best)
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the logistic regression model with best-case imputation
+kfold_log_best = kfold_validate(outcome = "ANY_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "binomial", 
+                                miss_method = "best", 
+                                folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_best$all_fold_auc
+median(kfold_log_best$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_best |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 3b: Worst-Case Imputation
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + worst-case imputation
+mod_log_worst = case_approach(outcome = "ANY_ADMIT", 
+                              covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                              data = hosp_dat, 
+                              family = "binomial", 
+                              best = FALSE) 
+
+# View the fitted model summary
+mod_log_worst$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_log_worst = mod_log_worst$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_worst)
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the logistic regression model with worst-case imputation
+kfold_log_worst = kfold_validate(outcome = "ANY_ADMIT", 
+                                 covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                 data = hosp_dat, 
+                                 family = "binomial", 
+                                 miss_method = "worst", 
+                                 folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_worst$all_fold_auc
+median(kfold_log_worst$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_worst |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+### Separate Component Models {.tabset}
+
+#### Approach 4a: Best-Case Case Imputation (Separate)
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + best-case imputation (separate components)
+mod_log_best = case_approach(outcome = "ANY_ADMIT", 
+                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                             data = hosp_dat, 
+                             family = "binomial", 
+                             best = TRUE, 
+                             comp_sep = TRUE) 
+
+# View the fitted model summary
+mod_log_best$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_log_best = mod_log_best$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_best)
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the logistic regression model with best-case imputation
+kfold_log_best_sep = kfold_validate(outcome = "ANY_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                    data = hosp_dat, 
+                                    family = "binomial", 
+                                    miss_method = "best", 
+                                    comp_sep = TRUE,
+                                    folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_best_sep$all_fold_auc
+median(kfold_log_best_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_best_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 4b: Worst-Case Case Imputation (Separate)
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + worst-case imputation (separate components)
+mod_log_worst = case_approach(outcome = "ANY_ADMIT", 
+                              covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                              data = hosp_dat, 
+                              family = "binomial", 
+                              best = FALSE, 
+                              comp_sep = TRUE) 
+
+# View the fitted model summary
+mod_log_worst$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_log_worst = mod_log_worst$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_worst)
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the logistic regression model with best-case imputation
+kfold_log_worst_sep = kfold_validate(outcome = "ANY_ADMIT", 
+                                     covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                     data = hosp_dat, 
+                                     family = "binomial", 
+                                     miss_method = "worst", 
+                                     comp_sep = TRUE,
+                                     folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_worst_sep$all_fold_auc
+median(kfold_log_worst_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_worst_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 5: Missingness as a Category (Separate)
+
+```{r}
+# Logistic regression + missing as a category (separate components)
+mod_log_cat = miss_cat_approach(outcome = "ANY_ADMIT",
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                data = hosp_dat,
+                                family = "binomial")
+
+# View the fitted model summary
+mod_log_cat$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_log_cat = mod_log_cat$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_cat)
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated (Empty Categories -- Can't Run)
+
+```{r, eval = FALSE}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(919)
+
+# 5-fold cross validation of the logistic regression model with best-case imputation
+kfold_log_cat_sep = kfold_validate(outcome = "ANY_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   data = hosp_dat, 
+                                   family = "binomial", 
+                                   miss_method = "cat", 
+                                   comp_sep = TRUE,
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_cat_sep$all_fold_auc
+median(kfold_log_cat_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_cat_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+## Model 2: Random Forest {.tabset}
+### Summary Measure Models {.tabset}
+#### Approach 1: Proportion of Non-Missing Components That Are Unhealthy 
+
+##### Fit to Full Sample 
+
+```{r}
+# Random forest + complete-case proportion
+mod_rf_prop = cc_prop_approach(outcome = "ANY_ADMIT", 
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                               data = hosp_dat, 
+                               family = "binomial", 
+                               use_glm = FALSE) 
+
+# View the fitted model summary
+mod_rf_prop$fit$variable.importance 
+
+# Calculate predicted probabilities 
+pred_prob_rf_prop = mod_rf_prop$fit$predictions[, 1]
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_prop)
+plot(roc_curve, 
+     col = "cornflowerblue", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the random forest with complete-case proportion ALI
+kfold_rf_cc_prop = kfold_validate(outcome = "ANY_ADMIT", 
+                                  covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                  data = hosp_dat, 
+                                  family = "binomial", 
+                                  miss_method = "cc_prop", 
+                                  use_glm = FALSE,
+                                  folds = 5)
+
+## View AUC from 5 folds 
+kfold_rf_cc_prop$all_fold_auc
+median(kfold_rf_cc_prop$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_rf_cc_prop |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 2: Counts of Unhealthy and Missing Components 
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + count of missing / unhealthy
+mod_rf_num = num_miss_approach(outcome = "ANY_ADMIT", 
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                               data = hosp_dat, 
+                               family = "binomial", 
+                               use_glm = FALSE) 
+
+# View the fitted model summary
+mod_rf_num$fit$variable.importance 
+
+# Calculate predicted probabilities 
+pred_prob_rf_num = mod_rf_num$fit$predictions[, 1]
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_num)
+plot(roc_curve, 
+     col = "cornflowerblue", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the random forest with complete-case proportion ALI
+kfold_log_num_miss = kfold_validate(outcome = "ANY_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                    data = hosp_dat, 
+                                    family = "binomial", 
+                                    miss_method = "num_miss", 
+                                    folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_num_miss$all_fold_auc
+median(kfold_log_num_miss$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_num_miss |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 3a: Best-Case Imputation
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + best-case imputation
+mod_rf_best = case_approach(outcome = "ANY_ADMIT", 
+                            covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                            data = hosp_dat, 
+                            family = "binomial", 
+                            best = TRUE, 
+                            use_glm = FALSE) 
+
+# View the fitted model summary
+mod_rf_best$fit$variable.importance 
+
+# Calculate predicted probabilities 
+pred_prob_rf_best = mod_rf_best$fit$predictions[, 1]
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_best)
+plot(roc_curve, 
+     col = "cornflowerblue", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the random forest with best-case imputation
+kfold_rf_best = kfold_validate(outcome = "ANY_ADMIT", 
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                               data = hosp_dat, 
+                               family = "binomial", 
+                               miss_method = "best", 
+                               use_glm = FALSE,
+                               folds = 5)
+
+## View AUC from 5 folds 
+kfold_rf_best$all_fold_auc
+median(kfold_rf_best$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_rf_best |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 3b: Worst-Case Imputation
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + worst-case imputation
+mod_rf_worst = case_approach(outcome = "ANY_ADMIT", 
+                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                             data = hosp_dat, 
+                             family = "binomial", 
+                             best = FALSE, 
+                             use_glm = FALSE) 
+
+# View the fitted model summary
+mod_rf_worst$fit$variable.importance 
+
+# Calculate predicted probabilities 
+pred_prob_rf_worst = mod_rf_worst$fit$predictions[, 1]
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_worst)
+plot(roc_curve, 
+     col = "cornflowerblue", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the random forest with worst-case imputation
+kfold_rf_worst = kfold_validate(outcome = "ANY_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "binomial", 
+                                miss_method = "worst", 
+                                use_glm = FALSE,
+                                folds = 5)
+
+## View AUC from 5 folds 
+kfold_rf_worst$all_fold_auc
+median(kfold_rf_worst$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_rf_worst |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+### Separate Component Models {.tabset}
+
+#### Approach 4a: Best-Case Case Imputation (Separate)
+
+##### Fit to Full Sample 
+
+```{r}
+# Logistic regression + best-case imputation (separate components)
+mod_rf_best_sep = case_approach(outcome = "ANY_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "binomial", 
+                                best = TRUE, 
+                                comp_sep = TRUE, 
+                                use_glm = FALSE) 
+
+# View the fitted model summary
+mod_rf_best_sep$fit$variable.importance 
+
+# Calculate predicted probabilities 
+pred_prob_rf_best_sep = mod_rf_best_sep$fit$predictions[, 1]
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_best_sep)
+plot(roc_curve, 
+     col = "cornflowerblue", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the random forest with best-case imputation
+kfold_rf_best_sep = kfold_validate(outcome = "ANY_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   data = hosp_dat, 
+                                   family = "binomial", 
+                                   miss_method = "best", 
+                                   comp_sep = TRUE,
+                                   use_glm = FALSE,
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_rf_best_sep$all_fold_auc
+median(kfold_rf_best_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_rf_best_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 4b: Worst-Case Case Imputation (Separate)
+
+##### Fit to Full Sample 
+
+```{r}
+# Random forest + worst-case imputation (separate components)
+mod_rf_worst_sep = case_approach(outcome = "ANY_ADMIT", 
+                                 covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                 data = hosp_dat, 
+                                 family = "binomial", 
+                                 best = FALSE, 
+                                 comp_sep = TRUE,
+                                 use_glm = FALSE) 
+
+# View the fitted model summary
+mod_rf_worst_sep$fit$variable.importance 
+
+# Calculate predicted probabilities 
+pred_prob_rf_worst_sep = mod_rf_worst_sep$fit$predictions[, 1]
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_worst_sep)
+plot(roc_curve, 
+     col = "cornflowerblue", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the random forest with worst-case imputation
+kfold_rf_worst_sep = kfold_validate(outcome = "ANY_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                    data = hosp_dat, 
+                                    family = "binomial", 
+                                    miss_method = "worst", 
+                                    use_glm = FALSE,
+                                    comp_sep = TRUE,
+                                    folds = 5)
+
+## View AUC from 5 folds 
+kfold_rf_worst_sep$all_fold_auc
+median(kfold_rf_worst_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_rf_worst_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 5: Missingness as a Category (Separate)
+
+```{r}
+# Logistic regression + missing as a category (separate components)
+mod_rf_cat = miss_cat_approach(outcome = "ANY_ADMIT",
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                               data = hosp_dat,
+                               family = "binomial", 
+                               use_glm = FALSE)
+
+# View the fitted model summary
+mod_rf_cat$fit$variable.importance 
+
+# Calculate predicted probabilities 
+pred_prob_rf_cat = mod_rf_cat$fit$predictions[, 1]
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_cat)
+plot(roc_curve, 
+     col = "cornflowerblue", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated (Empty Categories -- Can't Run)
+
+```{r, eval = FALSE}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(919)
+
+# 5-fold cross validation of the logistic regression model with best-case imputation
+kfold_log_cat_sep = kfold_validate(outcome = "ANY_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   data = hosp_dat, 
+                                   family = "binomial", 
+                                   miss_method = "cat", 
+                                   comp_sep = TRUE,
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_cat_sep$all_fold_auc
+median(kfold_log_cat_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_cat_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+## Model 3: Poisson Regression {.tabset}
+### Summary Measure Models {.tabset}
+#### Approach 1: Proportion of Non-Missing Components That Are Unhealthy 
+
+##### Fit to Full Sample 
+
+```{r}
+#  poisson + complete-case proportion
+mod_pois_prop = cc_prop_approach(outcome = "NUM_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "poisson") 
+
+# View the fitted model summary
+mod_pois_prop$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_pois_prop = mod_pois_prop$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_prop)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the  poisson model with complete-case proportion ALI
+kfold_pois_cc_prop = kfold_validate(outcome = "NUM_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   data = hosp_dat, 
+                                   family = "poisson", 
+                                   miss_method = "cc_prop", 
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_pois_cc_prop$all_fold_auc
+median(kfold_pois_cc_prop$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_pois_cc_prop |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+
+#### Approach 2: Counts of Unhealthy and Missing Components 
+
+##### Fit to Full Sample 
+
+```{r}
+# poisson regression + count of missing / unhealthy
+mod_pois_num = num_miss_approach(outcome = "NUM_ADMIT", 
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                               data = hosp_dat, 
+                               family = "poisson")
+
+# View the fitted model summary
+mod_pois_num$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_pois_num = mod_pois_num$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_num)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the poisson with complete-case proportion ALI
+kfold_pois_num_miss = kfold_validate(outcome = "ANY_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                    data = hosp_dat, 
+                                    family = "poisson", 
+                                    miss_method = "num_miss", 
+                                    folds = 5)
+
+## View AUC from 5 folds 
+kfold_pois_num_miss$all_fold_auc
+median(kfold_pois_num_miss$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_pois_num_miss |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 3a: Best-Case Imputation
+
+##### Fit to Full Sample 
+
+```{r}
+# poisson regression + best-case imputation
+mod_pois_best = case_approach(outcome = "NUM_ADMIT", 
+                            covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                            data = hosp_dat, 
+                            family = "poisson", 
+                            best = TRUE) 
+
+# View the fitted model summary
+mod_pois_best$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_pois_best = mod_pois_best$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_best)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the  poisson with best-case imputation
+kfold_pois_best = kfold_validate(outcome = "NUM_ADMIT", 
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                               data = hosp_dat, 
+                               family = "poisson", 
+                               miss_method = "best", 
+                              folds = 5)
+
+## View AUC from 5 folds 
+kfold_pois_best$all_fold_auc
+median(kfold_pois_best$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_pois_best |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 3b: Worst-Case Imputation
+
+##### Fit to Full Sample 
+
+```{r}
+# poisson regression + worst-case imputation
+mod_pois_worst = case_approach(outcome = "NUM_ADMIT", 
+                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                             data = hosp_dat, 
+                             family = "poisson", 
+                             best = FALSE) 
+
+# View the fitted model summary
+mod_pois_worst$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_pois_worst = mod_pois_worst$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_worst)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the poisson with worst-case imputation
+kfold_pois_worst = kfold_validate(outcome = "NUM_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                data = hosp_dat, 
+                                family = "poisson", 
+                                miss_method = "worst", 
+                                folds = 5)
+
+## View AUC from 5 folds 
+kfold_pois_worst$all_fold_auc
+median(kfold_pois_worst$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_pois_worst |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+
+
+
+
+### Separate Component Models {.tabset}
+
+#### Approach 4a: Best-Case Case Imputation (Separate)
+
+##### Fit to Full Sample 
+
+```{r}
+# poisson regression + best-case imputation (separate components)
+mod_pois_best_sep = case_approach(outcome = "NUM_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                data = hosp_dat, 
+                                family = "poisson", 
+                                best = TRUE, 
+                                comp_sep = TRUE) 
+
+# View the fitted model summary
+mod_pois_best_sep$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_pois_best_sep = mod_pois_best_sep$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_best_sep)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the poisson with best-case imputation
+kfold_pois_best_sep = kfold_validate(outcome = "NUM_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   data = hosp_dat, 
+                                   family = "poisson", 
+                                   miss_method = "best", 
+                                   comp_sep = TRUE,
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_pois_best_sep$all_fold_auc
+median(kfold_pois_best_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_pois_best_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 4b: Worst-Case Case Imputation (Separate)
+
+##### Fit to Full Sample 
+
+```{r}
+# poisson + worst-case imputation (separate components)
+mod_pois_worst_sep = case_approach(outcome = "NUM_ADMIT", 
+                                 covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                 data = hosp_dat, 
+                                 family = "poisson", 
+                                 best = FALSE, 
+                                 comp_sep = TRUE) 
+
+# View the fitted model summary
+mod_pois_worst_sep$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_pois_worst_sep = mod_pois_worst_sep$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_worst_sep)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the poisson with worst-case imputation
+kfold_pois_worst_sep = kfold_validate(outcome = "NUM_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                    data = hosp_dat, 
+                                    family = "poisson", 
+                                    miss_method = "worst",
+                                    comp_sep = TRUE,
+                                    folds = 5)
+
+## View AUC from 5 folds 
+kfold_pois_worst_sep$all_fold_auc
+median(kfold_pois_worst_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_pois_worst_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 5: Missingness as a Category (Separate)
+
+```{r}
+# poisson + missing as a category (separate components)
+mod_pois_cat = miss_cat_approach(outcome = "NUM_ADMIT",
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                               data = hosp_dat,
+                               family = "poisson")
+
+# View the fitted model summary
+mod_pois_cat$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_pois_cat = mod_pois_cat$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_cat)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+
+##### 5-Fold Cross-Validated (Empty Categories -- Can't Run)
+
+```{r, eval = FALSE}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(919)
+
+# 5-fold cross validation of the poisson model with best-case imputation
+kfold_pois_cat_sep = kfold_validate(outcome = "NUM_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                   data = hosp_dat, 
+                                   family = "poisson", 
+                                   miss_method = "cat", 
+                                   comp_sep = TRUE,
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_pois_cat_sep$all_fold_auc
+median(kfold_pois_cat_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_pois_cat_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+
+## Model 4: Zero-Inflated Poisson Regression {.tabset}
+### Summary Measure Models {.tabset}
+#### Approach 1: Proportion of Non-Missing Components That Are Unhealthy 
+
+##### Fit to Full Sample 
+
+```{r}
+#  ZIP + complete-case proportion
+mod_zip_prop = cc_prop_approach(outcome = "NUM_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                data = hosp_dat, 
+                                family = "poisson") 
+
+# View the fitted model summary
+mod_zip_prop$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_zip_prop = mod_zip_prop$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_prop)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the  ZIP model with complete-case proportion ALI
+kfold_zip_cc_prop = kfold_validate(outcome = "NUM_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                   data = hosp_dat, 
+                                   family = "poisson", 
+                                   miss_method = "cc_prop", 
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_zip_cc_prop$all_fold_auc
+median(kfold_zip_cc_prop$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_zip_cc_prop |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 2: Counts of Unhealthy and Missing Components 
+
+##### Fit to Full Sample 
+
+```{r}
+# ZIP regression + count of missing / unhealthy
+mod_zip_num = num_miss_approach(outcome = "NUM_ADMIT", 
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                               zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                               data = hosp_dat, 
+                               family = "poisson")
+
+# View the fitted model summary
+mod_zip_num$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_zip_num = mod_zip_num$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_num)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the  ZIP with complete-case proportion ALI
+kfold_zip_num_miss = kfold_validate(outcome = "ANY_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                    zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                    data = hosp_dat, 
+                                    family = "poisson", 
+                                    miss_method = "num_miss", 
+                                    folds = 5)
+
+## View AUC from 5 folds 
+kfold_zip_num_miss$all_fold_auc
+median(kfold_zip_num_miss$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_zip_num_miss |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 3a: Best-Case Imputation
+
+##### Fit to Full Sample 
+
+```{r}
+# ZIP regression + best-case imputation
+mod_zip_best = case_approach(outcome = "NUM_ADMIT", 
+                            covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                            zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                            data = hosp_dat, 
+                            family = "poisson", 
+                            best = TRUE) 
+
+# View the fitted model summary
+mod_zip_best$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_zip_best = mod_zip_best$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_best)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the  ZIP with best-case imputation
+kfold_zip_best = kfold_validate(outcome = "NUM_ADMIT", 
+                               covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                               zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                               data = hosp_dat, 
+                               family = "poisson", 
+                               miss_method = "best", 
+                              folds = 5)
+
+## View AUC from 5 folds 
+kfold_zip_best$all_fold_auc
+median(kfold_zip_best$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_zip_best |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 3b: Worst-Case Imputation
+
+##### Fit to Full Sample 
+
+```{r}
+# ZIP regression + worst-case imputation
+mod_zip_worst = case_approach(outcome = "NUM_ADMIT", 
+                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                             zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                             data = hosp_dat, 
+                             family = "poisson", 
+                             best = FALSE) 
+
+# View the fitted model summary
+mod_zip_worst$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_zip_worst = mod_zip_worst$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_worst)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the ZIP with worst-case imputation
+kfold_zip_worst = kfold_validate(outcome = "NUM_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                data = hosp_dat, 
+                                family = "poisson", 
+                                miss_method = "worst", 
+                                folds = 5)
+
+## View AUC from 5 folds 
+kfold_zip_worst$all_fold_auc
+median(kfold_zip_worst$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_zip_worst |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+### Separate Component Models {.tabset}
+
+#### Approach 4a: Best-Case Case Imputation (Separate)
+
+##### Fit to Full Sample 
+
+```{r}
+# ZIP regression + best-case imputation (separate components)
+mod_zip_best_sep = case_approach(outcome = "NUM_ADMIT", 
+                                 covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                 zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                 data = hosp_dat, 
+                                 family = "poisson", 
+                                 best = TRUE, 
+                                 comp_sep = TRUE) 
+
+# View the fitted model summary
+mod_zip_best_sep$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_zip_best_sep = mod_zip_best_sep$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_best_sep)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the ZIP with best-case imputation
+kfold_zip_best_sep = kfold_validate(outcome = "NUM_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                   data = hosp_dat, 
+                                   family = "poisson", 
+                                   miss_method = "best", 
+                                   comp_sep = TRUE,
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_zip_best_sep$all_fold_auc
+median(kfold_zip_best_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_zip_best_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 4b: Worst-Case Case Imputation (Separate)
+
+##### Fit to Full Sample 
+
+```{r}
+# ZIP + worst-case imputation (separate components)
+mod_zip_worst_sep = case_approach(outcome = "NUM_ADMIT", 
+                                 covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                 zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                 data = hosp_dat, 
+                                 family = "poisson", 
+                                 best = FALSE, 
+                                 comp_sep = TRUE) 
+
+# View the fitted model summary
+mod_zip_worst_sep$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_zip_worst_sep = mod_zip_worst_sep$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_worst_sep)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the ZIP with worst-case imputation
+kfold_zip_worst_sep = kfold_validate(outcome = "NUM_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                    zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                    data = hosp_dat, 
+                                    family = "poisson", 
+                                    miss_method = "worst",
+                                    comp_sep = TRUE,
+                                    folds = 5)
+
+## View AUC from 5 folds 
+kfold_zip_worst_sep$all_fold_auc
+median(kfold_zip_worst_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_zip_worst_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
+
+#### Approach 5: Missingness as a Category (Separate)
+
+```{r}
+# ZIP + missing as a category (separate components)
+mod_zip_cat = miss_cat_approach(outcome = "NUM_ADMIT",
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                data = hosp_dat,
+                                family = "poisson")
+
+# View the fitted model summary
+mod_zip_cat$fit |> 
+  summary()
+
+# Calculate predicted probabilities
+pred_prob_zip_cat = mod_zip_cat$fit |> 
+  predict(type = "response")
+
+# Make the ROC curve 
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_cat)
+plot(roc_curve, 
+     col = "palegreen", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+
+# Calculate AUC (95% Confidence Interval)
+ci.auc(roc_curve)
+```
+
+
+##### 5-Fold Cross-Validated (Empty Categories -- Can't Run)
+
+```{r, eval = FALSE}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(919)
+
+# 5-fold cross validation of the ZIP model with best-case imputation
+kfold_zip_cat_sep = kfold_validate(outcome = "NUM_ADMIT", 
+                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                   zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                   data = hosp_dat, 
+                                   family = "poisson", 
+                                   miss_method = "cat", 
+                                   comp_sep = TRUE,
+                                   folds = 5)
+
+## View AUC from 5 folds 
+kfold_zip_cat_sep$all_fold_auc
+median(kfold_zip_cat_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_zip_cat_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
