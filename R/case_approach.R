@@ -42,6 +42,23 @@ case_approach = function(outcome, covar = NULL, zeros = NULL, data, family, best
                 1)
   }
 
+  # For separate component, zero-inflated models,
+  ## check for variables that are constant
+  ## (and exclude them)
+  if (comp_sep & use_zeroinfl) {
+    ## Calculate mean per component
+    comp_mean = colMeans(data[, bin_ALI_comp])
+
+    ## If mean = 0 or 1, component is constant
+    if (any(comp_mean %in% c(0, 1))) {
+      ### Subset to only non-constant components
+      bin_ALI_comp = names(comp_mean)[!(comp_mean %in% c(0, 1))]
+      ### Print warning message about components being excluded
+      warning(paste("The following components were constant across all patients and were excluded from the model:",
+              paste(names(comp_mean)[(comp_mean %in% c(0, 1))], collapse = ", ")))
+    }
+  }
+
   # Fit the model of interest
   if (comp_sep) {
     if (use_glm) { ## Using a generalized linear model (GLM)
