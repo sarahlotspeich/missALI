@@ -15,9 +15,9 @@ Description: Implements logistic and Poisson regression models to predict hospit
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.3.2
 Depends:
     dplyr, 
     tidyr, 
     ranger, 
     pscl
+Config/roxygen2/version: 8.0.0

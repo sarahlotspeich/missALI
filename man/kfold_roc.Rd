@@ -8,6 +8,7 @@ kfold_roc(
   kfold_validate_res,
   plot_folds = 1,
   overlay_average = TRUE,
+  line_col = "blue",
   color_by_fold = FALSE
 )
 }
@@ -17,6 +18,8 @@ kfold_roc(
 \item{plot_folds}{numeric indexes of folds to plot. Default is \code{plot_folds = 1} (the first only).}
 
 \item{overlay_average}{logical, if \code{overlay_average = TRUE} (default) the average ROC curve across all folds is included in the plot.}
+
+\item{line_col}{string, color for the smoother line if \code{overlay_average = TRUE}. The default is \code{line_col = "blue"}.}
 
 \item{color_by_fold}{logical, if \code{color_by_fold = TRUE} the ROC curves for each fold will be identified by color. Default is \code{color_by_fold = FALSE}.}
 }
