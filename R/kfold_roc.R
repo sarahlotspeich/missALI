@@ -16,7 +16,7 @@ kfold_roc = function(kfold_validate_res, plot_folds = 1, overlay_average = TRUE,
   plot_folds_auc = all_fold_auc[plot_folds]
   ### If plotting more than 1 fold, calculate median AUC
   if (length(plot_folds) > 1) {
-    label_auc = paste0("Median AUC = ", round(median(plot_folds_auc), 3))
+    label_auc = paste0("= ", round(median(plot_folds_auc), 3))
   } else {
     label_auc = paste0("AUC = ", round(plot_folds_auc, 3))
   }
