@@ -10,7 +10,7 @@ kfold_validate(
   zeros = NULL,
   data,
   family,
-  miss_method = "none",
+  miss_method = "cc_prop",
   use_glm = TRUE,
   comp_sep = FALSE,
   folds = 5
