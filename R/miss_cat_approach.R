@@ -46,14 +46,23 @@ miss_cat_approach = function(outcome, covar = NULL, zeros = NULL, data, family, 
     count_levels = apply(X = data[, factor_ALI_comp],
                          MARGIN = 2,
                          FUN = function(x) length(unique(x)))
-    # warning(paste("The following variables were constant and excluded from the model:",
-    #               paste(factor_ALI_comp[count_levels == 1], collapse = ", ")))
+    warning(paste("The following variables were constant and excluded from the model:",
+                  paste(factor_ALI_comp[count_levels == 1], collapse = ", ")))
     if (use_zeroinfl) {
-      fit_ind = zeroinfl(as.formula(paste(outcome, "~", paste(c(factor_ALI_comp[count_levels > 1], covar), collapse = "+"), "|", paste(zeros, collapse = "+"))),
+      ### Hard coded: Collinearity between missing CHOL --> missing TRIG
+      #### Group them into missing CHOL + TRIG
+      data = data |>
+        mutate(
+          CHOL_FUnhealthy = as.numeric(CHOL_F == "Unhealthy"),
+          TRIG_FUnhealthy = as.numeric(TRIG_F == "Unhealthy"),
+          CHOL_TRIG_FMissing = as.numeric(TRIG_F == "Missing")
+        )
+      fit_ind = zeroinfl(formula = as.formula(paste(outcome, "~",
+                                                    paste(c(factor_ALI_comp[count_levels > 1][-c(4, 8)], "CHOL_FUnhealthy", "TRIG_FUnhealthy", "CHOL_TRIG_FMissing", covar), collapse = "+"), "|", paste(zeros, collapse = "+"))),
                          dist = family,
                          data = data)
     } else {
-      fit_ind = glm(as.formula(paste(outcome, "~", paste(c(factor_ALI_comp[count_levels > 1], covar), collapse = "+"))),
+      fit_ind = glm(formula = as.formula(paste(outcome, "~", paste(c(factor_ALI_comp[count_levels > 1], covar), collapse = "+"))),
                     family = family,
                     data = data)
     }
