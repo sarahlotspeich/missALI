@@ -29,9 +29,9 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
   kfold_auc = vector(length = folds)
   for (k in 1:folds) {
     ## Subset to fold k (for training data)
-    train = data[data_folds == k, ]
+    train = data[data_folds != k, ]
     ## Subset to all folds except k (for testing data)
-    test = data[data_folds != k, ]
+    test = data[data_folds == k, ]
     ## Fit the model + missing data approach using train data
     ### And add corresponding ALI column(s) to test data for prediction
     if (miss_method == "cc_prop") {
