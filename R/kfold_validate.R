@@ -14,7 +14,7 @@
 #' \item{all_fold_res}{list of lists containg all results from each fold (including trained model, test predictions, and the receiver operating characteristic (ROC) curve)}
 #' @export
 #' @importFrom pROC roc auc
-#' @importFrom ranger predict
+#' @import ranger
 
 kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, miss_method = "cc_prop", use_glm = TRUE, comp_sep = FALSE, folds = 5) {
   # Randomly assign folds
