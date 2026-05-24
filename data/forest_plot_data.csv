@@ -1,0 +1,55 @@
+"Model","Missing","Separate_Components","Fit","AUC"
+"Logistic","Complete-Case Proportion","Summary Measure","Full-Sample",0.642701178852457
+"Logistic","Complete-Case Proportion","Summary Measure","K-Fold",0.633778334028647
+"Logistic","Counts of Unhealthy and Missing Components","Summary Measure","Full-Sample",0.639125777612985
+"Logistic","Counts of Unhealthy and Missing Components","Summary Measure","K-Fold",0.627240143369177
+"Logistic","Best Case Imputation","Summary Measure","Full-Sample",0.638581374955123
+"Logistic","Best Case Imputation","Summary Measure","K-Fold",0.626738351254481
+"Logistic","Worst Case Imputation","Summary Measure","Full-Sample",0.629202935654549
+"Logistic","Worst Case Imputation","Summary Measure","K-Fold",0.6270337922403
+"Logistic","Best Case Imputation","Separate Components","Full-Sample",0.666581327871651
+"Logistic","Best Case Imputation","Separate Components","K-Fold",0.63968849951328
+"Logistic","Worst Case Imputation","Separate Components","Full-Sample",0.644528606152632
+"Logistic","Worst Case Imputation","Separate Components","K-Fold",0.61208455013211
+"Logistic","Missingness as a Category","Separate Components","Full-Sample",0.702988623455809
+"Logistic","Pattern Submodels","Separate Components","Full-Sample",0.730046751378566
+"Logistic","Pattern Submodels","Separate Components","K-Fold",0.638682432432433
+"Random Forest","Complete-Case Proportion","Summary Measure","Full-Sample",0.605940757219958
+"Random Forest","Complete-Case Proportion","Summary Measure","K-Fold",0.61917674871367
+"Random Forest","Counts of Unhealthy and Missing Components","Summary Measure","Full-Sample",0.612697235611586
+"Random Forest","Counts of Unhealthy and Missing Components","Summary Measure","K-Fold",0.627240143369177
+"Random Forest","Best Case Imputation","Summary Measure","Full-Sample",0.594228743283247
+"Random Forest","Best Case Imputation","Summary Measure","K-Fold",0.624382863513299
+"Random Forest","Worst Case Imputation","Summary Measure","Full-Sample",0.577019733860668
+"Random Forest","Worst Case Imputation","Summary Measure","K-Fold",0.599299251473164
+"Random Forest","Best Case Imputation","Separate Components","Full-Sample",0.628240667172814
+"Random Forest","Best Case Imputation","Separate Components","K-Fold",0.661799471561675
+"Random Forest","Worst Case Imputation","Separate Components","Full-Sample",0.622231638916844
+"Random Forest","Worst Case Imputation","Separate Components","K-Fold",0.640175219023779
+"Random Forest","Missingness as a Category","Separate Components","Full-Sample",0.662334987140328
+"Poisson","Complete-Case Proportion","Summary Measure","Full-Sample",0.637221839669004
+"Poisson","Complete-Case Proportion","Summary Measure","K-Fold",0.633958633958634
+"Poisson","Counts of Unhealthy and Missing Components","Summary Measure","Full-Sample",0.62727251325694
+"Poisson","Counts of Unhealthy and Missing Components","Summary Measure","K-Fold",0.625232974910395
+"Poisson","Best Case Imputation","Summary Measure","Full-Sample",0.631766042222105
+"Poisson","Best Case Imputation","Summary Measure","K-Fold",0.623977873977874
+"Poisson","Worst Case Imputation","Summary Measure","Full-Sample",0.620928015255045
+"Poisson","Worst Case Imputation","Summary Measure","K-Fold",0.623977873977874
+"Poisson","Best Case Imputation","Separate Components","Full-Sample",0.659324587578202
+"Poisson","Best Case Imputation","Separate Components","K-Fold",0.637926887926887
+"Poisson","Worst Case Imputation","Separate Components","Full-Sample",0.637736815156169
+"Poisson","Worst Case Imputation","Separate Components","K-Fold",0.635762385762386
+"Poisson","Missingness as a Category","Separate Components","Full-Sample",0.68929910364838
+"Zero-Inflated Poisson","Complete-Case Proportion","Summary Measure","Full-Sample",0.629653171366187
+"Zero-Inflated Poisson","Complete-Case Proportion","Summary Measure","K-Fold",0.635882635882636
+"Zero-Inflated Poisson","Counts of Unhealthy and Missing Components","Summary Measure","Full-Sample",0.620780879401568
+"Zero-Inflated Poisson","Counts of Unhealthy and Missing Components","Summary Measure","K-Fold",0.631275205117509
+"Zero-Inflated Poisson","Best Case Imputation","Summary Measure","Full-Sample",0.628905721230527
+"Zero-Inflated Poisson","Best Case Imputation","Summary Measure","K-Fold",0.623737373737374
+"Zero-Inflated Poisson","Worst Case Imputation","Summary Measure","Full-Sample",0.613853723419908
+"Zero-Inflated Poisson","Worst Case Imputation","Summary Measure","K-Fold",0.629268879268879
+"Zero-Inflated Poisson","Best Case Imputation","Separate Components","Full-Sample",0.653445038873293
+"Zero-Inflated Poisson","Best Case Imputation","Separate Components","K-Fold",0.638407888407889
+"Zero-Inflated Poisson","Worst Case Imputation","Separate Components","Full-Sample",0.622311092277722
+"Zero-Inflated Poisson","Worst Case Imputation","Separate Components","K-Fold",0.631433381433382
+"Zero-Inflated Poisson","Missingness as a Category","Separate Components","Full-Sample",0.669936025330907
