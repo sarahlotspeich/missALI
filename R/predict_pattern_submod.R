@@ -22,13 +22,16 @@ predict_pattern_submod = function(submod_res, newdata = NULL) {
       select(starts_with("MISS", ignore.case = FALSE), n, miss_pat) |>
       unique()
 
+    # Define the missingness indicators' column names
+    miss_ind_cols = grep(pattern = "MISS", 
+                         x = colnames(newdata), 
+                         ignore.case = FALSE, 
+                         value = TRUE)
+    
     ## Merge missing data pattern IDs back into patient data (to define subgroups)
     newdata = newdata |>
       left_join(y = train_miss_pat,
-                by = grep(pattern = "MISS",
-                          x = colnames(newdata),
-                          ignore.case = FALSE,
-                          value = TRUE)) |> 
+                by = miss_ind_cols) |> 
       mutate(nested = FALSE)
     
     ## Check for missing data patterns in test data but not train data
@@ -36,17 +39,14 @@ predict_pattern_submod = function(submod_res, newdata = NULL) {
       ### Subset to rows in newdata that need to be nested
       nest_newdata = newdata |> 
         filter(is.na(miss_pat))
-      
+
       ### Use apply to get parent pattern for each row 
       parent_newdata = apply(
-        X = nest_newdata, 
+        X = nest_newdata[, miss_ind_cols], #### only missingness indicators 
         MARGIN = 1, 
         FUN = nest_miss_pat_indiv, 
         all_miss_pat = train_miss_pat, 
-        miss_cols = grep(pattern = "MISS",
-                         x = colnames(newdata),
-                         ignore.case = FALSE,
-                         value = TRUE)
+        miss_cols = miss_ind_cols
       )
       
       ### Replace NA miss_pat with parent 
