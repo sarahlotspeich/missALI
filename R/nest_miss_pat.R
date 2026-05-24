@@ -19,12 +19,12 @@
       # Extract structural missing indices for the candidate parent
       candidate_missing = which(candidates[c_idx, miss_cols] == 1)
       
-      # Condition 1: Candidate parent must be a true subset of the child's missingness
-      # (All variables missing in the parent must also be missing in the child)
-      if (all(candidate_missing %in% child_missing)) {
+      # Condition 1: Child missingness must be a true subset of candidate parent
+      # (All variables missing in the child must also be missing in the parent)
+      if (all(child_missing %in% candidate_missing)) {
         
         # Condition 2: Calculate distance (how many extra variables are dropped)
-        dropped_difference = length(child_missing) - length(candidate_missing)
+        dropped_difference = length(candidate_missing) - length(child_missing)
         
         # Keep the candidate that drops the fewest variables
         if (dropped_difference < min_dropped_vars) {
