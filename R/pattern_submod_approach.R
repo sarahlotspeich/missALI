@@ -161,6 +161,16 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, data, fa
           ### Otherwise, take the parent pattern's fitted model "as-is"
           submod_list[[m]] = submod_list[[parent_index]]
         }
+        message(
+          paste(
+            "Missing pattern", all_miss_pat$miss_pat[m], 
+            "(only", paste0(nonmiss_comp_list[[m]], collapse = ","), 
+            "observed) was too small and nested within\n",
+            "  -> Missing pattern", all_miss_pat$miss_pat[parent_index],
+            "(only", paste0(nonmiss_comp_list[[parent_index]], collapse = ","), 
+            "observed)."
+            )
+          )
       }
     }
   }
