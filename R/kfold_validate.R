@@ -19,9 +19,9 @@
 kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, miss_method = "cc_prop", use_glm = TRUE, comp_sep = FALSE, folds = 5) {
   # Randomly assign folds
   data_folds = sample(
-    x = 1:folds,
+    x = rep(x = 1:folds, length.out = nrow(data)),
     size = nrow(data),
-    replace = TRUE
+    replace = FALSE
     )
 
   # Loop over folds 1, ..., k
