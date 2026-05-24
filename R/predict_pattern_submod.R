@@ -19,7 +19,7 @@ predict_pattern_submod = function(submod_res, newdata = NULL) {
     # Take missing data patterns defined for training data
     train_miss_pat = submod_res$data |>
       arrange(desc(n)) |>
-      select(starts_with("MISS", ignore.case = FALSE), n, miss_pat) |>
+      select(starts_with("MISS", ignore.case = FALSE), n, miss_pat, big_enough) |>
       unique()
 
     # Define the missingness indicators' column names

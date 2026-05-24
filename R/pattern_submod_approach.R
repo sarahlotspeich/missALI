@@ -36,6 +36,13 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, data, fa
     ungroup() |>
     mutate(miss_pat = paste0("MP-", 1:n()))
 
+  ## Define number of predictors
+  p = 10 + length(covar)
+  
+  ## Create indicator of being "big enough" for each pattern at 2p + 2 threshold
+  all_miss_pat = all_miss_pat |>
+    mutate(big_enough = n >= (2 * p + 2))
+  
   ## Merge missing data pattern IDs back into patient data (to define subgroups)
   data = data |>
     left_join(y = all_miss_pat,
@@ -43,14 +50,6 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, data, fa
                         x = colnames(data),
                         ignore.case = FALSE,
                         value = TRUE))
-
-  # Setup for pattern submodels
-  ## Define number of predictors
-  p = 10 + length(covar)
-
-  ## Create indicator of being "big enough" for each pattern at 2p + 2 threshold
-  all_miss_pat = all_miss_pat |>
-    mutate(big_enough = n >= (2 * p + 2))
 
   # Fit the (sub)model(s) of interest
   submod_list = list()
