@@ -6,7 +6,6 @@
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
-#' @param nest_pat optional, vector mapping patterns with small counts to their respective parent pattern rows (e.g., \code{c("9" = 1, "10" = 1)} if missing data pattern 9 should use the smodel from pattern 1).
 #' @return
 #' \item{data}{dataframe with the factor versions of the ALI components (with an added column identifying the missing data pattern).}
 #' \item{fit_list}{list of fitted regression model objects from all pattern submodels.}
@@ -14,7 +13,7 @@
 #' @import dplyr
 #' @importFrom ranger ranger
 #' @importFrom pscl zeroinfl
-pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE, nest_pat = NULL) {
+pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE) {
   # Create indicator of whether zero-inflation is needed
   use_zeroinfl = !is.null(zeros)
 
@@ -119,46 +118,48 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, data, fa
           }
         }
       } else { ## If not, take fitted submodel from parent missing data pattern
-        if (is.null(nest_pat)) {
-          warning(paste("Missing data pattern", m, "has too small complete cases to fit the CCS model. Please supply a mapping through the nest_pat argument to decide which better-supported missing data pattern it should be nested within."))
-          submod_list[[m]] = NULL
-        } else {
-          ## Look up which large, stable parent model index this tiny pattern belongs to
-          parent_index = as.numeric(nest_pat[as.character(m)])
-          parent_nonmiss_comp = nonmiss_comp_list[[parent_index]]
-          ## Subset to complete cases based on parent model's nonmiss_comp
-          cc_parent_nonmiss_comp = data[complete.cases(data[, parent_nonmiss_comp]), c("ANY_ADMIT", "NUM_ADMIT", "AGE_AT_ENCOUNTER", "SEX", parent_nonmiss_comp)]
-          try_to_refit = FALSE #nrow(cc_parent_nonmiss_comp) >= (2 * (length(parent_nonmiss_comp) + length(covar)) + 2)
-          if (try_to_refit) {
-            ### If we have enough complete cases from the parent nonmiss_comp, re-estimate
-            if (use_glm) { ## Using a generalized linear model (GLM)
-              if (use_zeroinfl) {
-                submod_list[[m]] = zeroinfl(formula = as.formula(paste(outcome, "~", paste(c(parent_nonmiss_comp, covar), collapse = "+"),  "|", paste(zeros, collapse = "+"))),
-                                            dist = family,
-                                            data = cc_parent_nonmiss_comp)
-              } else {
-                submod_list[[m]] = glm(formula = as.formula(paste(outcome, "~", paste(c(parent_nonmiss_comp, covar), collapse = "+"))),
-                                       family = family,
-                                       data = cc_parent_nonmiss_comp)
-              }
-            } else { ## Using a random forest
-              if (family == "binomial") {
-                submod_list[[m]] = ranger(
-                  formula = as.formula(paste(outcome, "~", paste(c(parent_nonmiss_comp, covar), collapse = "+"))),
-                  data = cc_parent_nonmiss_comp,
-                  num.trees = 500,
-                  mtry = 2,
-                  importance = "permutation",
-                  probability = TRUE # For classification, to get class probabilities
-                )
-              } else {
-                submod_list[[m]] = NULL
-              }
+        ## Look up which large, stable parent model index this tiny pattern belongs to
+        ### Find the parent pattern that contains the same missing values 
+        #### And drops the least other variables 
+        parent_index = nest_miss_pat(all_miss_pat = all_miss_pat, 
+                                     child_index = m, 
+                                     miss_cols = grep(pattern = "MISS",
+                                                      x = colnames(data),
+                                                      ignore.case = FALSE,
+                                                      value = TRUE))
+        parent_nonmiss_comp = nonmiss_comp_list[[parent_index]]
+        ## Subset to complete cases based on parent model's nonmiss_comp
+        cc_parent_nonmiss_comp = data[complete.cases(data[, parent_nonmiss_comp]), c("ANY_ADMIT", "NUM_ADMIT", "AGE_AT_ENCOUNTER", "SEX", parent_nonmiss_comp)]
+        try_to_refit = FALSE #nrow(cc_parent_nonmiss_comp) >= (2 * (length(parent_nonmiss_comp) + length(covar)) + 2)
+        if (try_to_refit) {
+          ### If we have enough complete cases from the parent nonmiss_comp, re-estimate
+          if (use_glm) { ## Using a generalized linear model (GLM)
+            if (use_zeroinfl) {
+              submod_list[[m]] = zeroinfl(formula = as.formula(paste(outcome, "~", paste(c(parent_nonmiss_comp, covar), collapse = "+"),  "|", paste(zeros, collapse = "+"))),
+                                          dist = family,
+                                          data = cc_parent_nonmiss_comp)
+            } else {
+              submod_list[[m]] = glm(formula = as.formula(paste(outcome, "~", paste(c(parent_nonmiss_comp, covar), collapse = "+"))),
+                                     family = family,
+                                     data = cc_parent_nonmiss_comp)
             }
-          } else {
-            ### Otherwise, take the parent pattern's fitted model "as-is"
-            submod_list[[m]] = submod_list[[parent_index]]
+          } else { ## Using a random forest
+            if (family == "binomial") {
+              submod_list[[m]] = ranger(
+                formula = as.formula(paste(outcome, "~", paste(c(parent_nonmiss_comp, covar), collapse = "+"))),
+                data = cc_parent_nonmiss_comp,
+                num.trees = 500,
+                mtry = 2,
+                importance = "permutation",
+                probability = TRUE # For classification, to get class probabilities
+              )
+            } else {
+              submod_list[[m]] = NULL
+            }
           }
+        } else {
+          ### Otherwise, take the parent pattern's fitted model "as-is"
+          submod_list[[m]] = submod_list[[parent_index]]
         }
       }
     }
