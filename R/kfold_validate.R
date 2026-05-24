@@ -5,7 +5,7 @@
 #' @param zeros optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
-#' @param miss_method missing data method. Default is \code{miss_method = "cc_prop"}; other options include \code{"num_miss"}, \code{"best"} case scenario, \code{"worst"} case scenario, and missingness categories (\code{"cat"}).
+#' @param miss_method missing data method. Default is \code{miss_method = "cc_prop"}; other options include \code{"num_miss"}, \code{"best"} case scenario, \code{"worst"} case scenario, missingness categories (\code{"cat"}), and pattern submodels (\code{"patsub"}).
 #' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
 #' @param comp_sep logical argument for whether the 10 ALI components should be modeled as separate covariates in the model or be combined into a composite proportion score. Default is \code{comp_sep = FALSE} (summary score).
 #' @param folds number of folds. Default is \code{folds = 5}.
@@ -94,22 +94,41 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
       } else {
         warning("The missingness as a category approach can only be used with the separate components model. Please set \\code{comp_sep = TRUE} and try again.")
       }
+    } else if (miss_method == "patsub") {
+      if (comp_sep) {
+        train_res = pattern_submod_approach(
+          outcome = outcome,
+          covar = covar,
+          zeros = zeros,
+          data = train,
+          family = family,
+          use_glm = use_glm
+        )
+      } else {
+        warning("The pattern submodels approach can only be used with the separate components model. Please set \\code{comp_sep = TRUE} and try again.")
+      }
     } else {
-      warning("Please select a valid missing data correction from the available options.")
+      stop(warning("Please select a valid missing data correction from the available options."))
     }
     ### Calculate predictions using trained model x test data
-    if (use_glm) { #### Probs for logistic, counts for Poisson
-      pred_test = predict(
-        object = train_res$fit,
-        type = "response",
-        newdata = test
-      )
+    if(miss_method == "patsub") { #### Bespoke function for pattern submodels
+      pred_test = predict_pattern_submod(
+        submod_res = train_res,
+        newdata = test)
     } else {
-      pred_test = predict(
-        object = train_res$fit,
-        data = test,
-        type = "response"
-      )$predictions[, 1]
+      if (use_glm) { #### Probs for logistic, counts for Poisson
+          pred_test = predict(
+            object = train_res$fit,
+            type = "response",
+            newdata = test
+          )
+        } else {
+        pred_test = predict(
+          object = train_res$fit,
+          data = test,
+          type = "response"
+        )$predictions[, 1]
+      }
     }
     #### Make ROC curve object
     roc_test = roc(
