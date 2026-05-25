@@ -84,6 +84,11 @@ predict_pattern_submod = function(submod_res, newdata = NULL) {
         object = submod_res$fit_list[[mp]],
         newdata = miss_pat_data,
         type = "response")
+    } else if ("zeroinfl" %in% class(submod_res$fit_list[[mp]])) {
+      miss_pat_data$PRED = predict(
+        object = submod_res$fit_list[[mp]],
+        newdata = miss_pat_data,
+        type = "response")
     }
     pred_data = pred_data |>
       filter(miss_pat != mp) |>
