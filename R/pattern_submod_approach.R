@@ -66,7 +66,14 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, data, fa
     if (all_miss_pat$big_enough[m]) {
       if (use_glm) { ## Using a generalized linear model (GLM)
         if (use_zeroinfl) {
-          submod_list[[m]] = zeroinfl(formula = as.formula(paste(outcome, "~", paste(c(nonmiss_comp, covar), collapse = "+"),  "|", paste(zeros, collapse = "+"))),
+          ## Count how many unique levels per factor variable
+          ### Any variables that are constant (only one level) are excluded
+          count_levels = apply(X = miss_pat_dat[, nonmiss_comp],
+                               MARGIN = 2,
+                               FUN = function(x) length(unique(x)))
+          warning(paste("The following variables were constant and excluded from the submodel:",
+                        paste(nonmiss_comp[count_levels == 1], collapse = ", ")))
+          submod_list[[m]] = zeroinfl(formula = as.formula(paste(outcome, "~", paste(c(nonmiss_comp[count_levels > 1], covar), collapse = "+"),  "|", paste(zeros, collapse = "+"))),
                                       dist = family,
                                       data = miss_pat_dat)
         } else {
