@@ -6,26 +6,352 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 ```
 
 # Setup 
 
-```{r}
+```{r, message = FALSE, warning = FALSE}
 # Load packages
 library(missALI) ## for models x missing data corrections 
 library(pROC) ## for ROC curves and AUC 
+library(ggplot2) ## for plots (in general)
+library(patchwork) ## for multi-panel plots 
+library(naniar) ## for upset plots of missing data patterns
 
 # Read in data on hospitalizations (suppressed for privacy)
 hosp_dat = read.csv("~/Documents/missALI_prediction/data/deidentified_ali_hospitalizations.csv")
 ```
 
+# Exploratory Data Analysis {.tabset}
+
+## Figure 2
+##### Patterns of missingness in the $10$ allostatic load index (ALI) for the $n = 1000$ patients in the sample from the electronic health records (EHR) at Atrium Health Wake Forest Baptist Hospital. Each row represents one of the $18$ distinct missing data patterns, and within that row the ALI component(s) with an ``X'' were missing.
+
+```{r, include = FALSE}
+# 0. Define and name missing patterns 
+ali_miss_pat = hosp_dat |> 
+  mutate(across(A1C:BP_SYSTOLIC, 
+                .fns = ~ if_else(is.na(.), 1, 0), 
+                .names = "MISS_{.col}")) |> 
+  group_by(across(starts_with("MISS"))) |> 
+  summarize(n = n()) |> 
+  arrange(desc(n)) |> 
+  ungroup() |> 
+  mutate(miss_pat = paste0("MP-", 1:n()))
+# 1. Prepare data and add custom labels
+annotated_data <- ali_miss_pat |>
+  mutate(
+    Pattern_Label = paste0("Pattern ", row_number(), "\n(", n, " Patients)"),
+    Pattern_Label = reorder(Pattern_Label, row_number())
+  ) |>
+  pivot_longer(
+    cols = starts_with("MISS_", ignore.case = FALSE), 
+    names_to = "Variable", 
+    values_to = "Missing"
+  ) |>
+  mutate(
+    Variable = sub("MISS_", "", Variable),
+    # Create an explicit text column: put an "X" if missing, leave blank if observed
+    cross_label = ifelse(Missing == 1, "X", "")
+  )
+
+# 2. Plot the tile map with the text overlay
+ggplot(annotated_data, aes(x = Variable, y = Pattern_Label)) +
+  # The base grid layer
+  geom_tile(aes(fill = factor(Missing)), color = "white", linewidth = 0.4) +
+  
+  # The text overlay layer: places the "X" right in the center of the tiles
+  geom_text(aes(label = cross_label), color = "#f6cec3", size = 3.5, fontface = "bold") +
+  
+  # Color scale styling (using clean, modern muted tones)
+  scale_fill_manual(
+    values = c("0" = "#f0ede6", "1" = "#e76f51"), # Off-white for observed, light peach/red tint for missing
+    labels = c("0" = "Observed", "1" = "Missing"), 
+    name = ""
+  ) +
+  theme_minimal(base_size = 16) +
+  scale_x_discrete(
+    labels = function(x) {
+      # 1. Map your raw dataframe strings to clean clinical names
+      clean_names <- c(
+        BP_SYSTOLIC  = "BP Systolic",
+        BP_DIASTOLIC = "BP Diastolic",
+        BMI          = "Body Mass Index",
+        ALB          = "Serum Albumin",
+        TRIG         = "Triglycerides",
+        CHOL         = "Cholesterol",
+        A1C          = "Hemoglobin A1C",
+        HCST         = "Homocysteine",
+        CRP          = "C-Reactive Protein",
+        CREAT_C      = "Creatinine Clearance"
+      )
+      
+      # 2. Look up the clean name, and wrap it at a width of 10 characters
+      stringr::str_wrap(clean_names[x], width = 10)
+    }
+  ) +
+  labs(
+    x = "Allostatic Load Index Component", 
+    y = "Missing Data Pattern (Number of Patients)"
+  ) +
+  theme(
+    axis.title = element_text(face = "bold"),
+    #axis.text.x = element_text(angle = 45, hjust = 1, color = "black"),
+    axis.text.y = element_text(color = "black"),
+    panel.grid = element_blank(),
+    legend.title = element_blank(), 
+    legend.position = "top"
+  )
+ggsave(filename = "~/Documents/missALI_prediction/figures/ali_miss_patterns.png", 
+       device = "png", width = 13, height = 9, units = "in")
+```
+
+## Figure 3 
+##### Distributions of the allostatic load index (ALI) for the $n = 1000$ patients in the sample from the electronic health records (EHR) at Atrium Health Wake Forest Baptist Hospital after using the complete-case proportion and best/worst case imputation missing data methods. 
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+ali_box_dat = hosp_dat |> 
+  select(PAT_MRN_ID, A1C:BP_SYSTOLIC) |> 
+  tidyr::gather(key = "COMPONENT", value = "VALUE", -1) |> 
+  group_by(PAT_MRN_ID) |> 
+  summarize(CC_PROP_ALI = mean(VALUE, na.rm = TRUE), 
+            BEST_CASE_ALI = sum(ifelse(is.na(VALUE), 0, VALUE), na.rm = TRUE) / 10, 
+            WORST_CASE_ALI = sum(ifelse(is.na(VALUE), 1, VALUE), na.rm = TRUE) / 10, ) 
+ali_box_dat |> 
+  select(-PAT_MRN_ID) |> 
+  summarize_all(median)
+ali_boxplots = ali_box_dat |> 
+  tidyr::gather(key = "MISS_METH", value = "VALUE", -1) |> 
+  mutate(MISS_METH = factor(x = MISS_METH, 
+                            levels = c("BEST_CASE_ALI",
+                                       "CC_PROP_ALI", 
+                                       "WORST_CASE_ALI"), 
+                            labels = c("Best Case Imputation", 
+                                       "Complete-Case Proportion", 
+                                       "Worst Case Imputation"))) |> 
+  ggplot(aes(x = MISS_METH, y = VALUE, fill = MISS_METH)) + 
+  geom_boxplot() + 
+  scale_fill_manual(values = c("#218288", "#FF855D", "#c1dbd0"), guide = "none") + 
+  scale_x_discrete(labels = scales::label_wrap(12)) +
+  theme_minimal(base_size = 14) +
+  labs(x = "Missing Data Technique",
+       y = "Allostatic Load Index (ALI)") + 
+  theme(axis.title = element_text(face = "bold"), 
+        title = element_text(face = "bold")) + 
+  coord_flip()
+ali_boxplots
+ggsave(
+  filename = "~/Documents/missALI_prediction/figures/compare_ali_boxplot.png",
+  plot = ali_boxplots,
+  device = "png",
+  width = 10,
+  height = 7,
+  units = "in"
+)
+```
+
+## Figure 4
+##### Proportion of $n = 1000$ patients in the sample from the electronic health records (EHR) at Atrium Health Wake Forest Baptist Hospital with healthy, unhealthy, and missing values across the $10$ allostatic load index (ALI) components, after discretizing the original numeric biomarkers at their clinically meaningful thresholds from Table 1.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+# Use exactly 3 colors (ordered to match factor levels below)
+cols3 <- c(
+  "Missing"   = "#218288",
+  "Unhealthy" = "#FF855D",
+  "Healthy"   = "#c1dbd0"
+)
+
+# Convert 0/1/NA into labeled factor
+make_miss_factor <- function(x) {
+  dplyr::case_when(
+    is.na(x) ~ "Missing",
+    x == 0   ~ "Healthy",
+    x == 1   ~ "Unhealthy",
+    TRUE     ~ NA_character_   # in case anything unexpected appears
+  ) |>
+    factor(levels = c("Missing", "Unhealthy", "Healthy"))
+}
+
+# Select components + recode
+ali_components_only <- hosp_dat |>
+  select(A1C:BP_SYSTOLIC) |>
+  mutate(across(everything(), make_miss_factor))
+
+# Pivot to long
+long_ali <- ali_components_only |>
+  pivot_longer(cols = everything(),
+               names_to = "Component",
+               values_to = "Value")
+
+# Order components by MOST missing
+order_levels <- long_ali |>
+  group_by(Component) |>
+  summarize(
+    num_missing = sum(Value == "Missing"),
+    .groups = "drop"
+  ) |>
+  arrange(desc(num_missing)) |>
+  pull(Component)
+
+# Plot
+histogram_missing <- long_ali |>
+  mutate(
+    COMP = factor(Component, levels = order_levels),
+    Finding = factor(Value, levels = c("Missing", "Unhealthy", "Healthy"))
+  ) |>
+  ggplot(aes(x = COMP, fill = Finding)) +
+  geom_bar(position = "fill", color = "black", linewidth = 0.25) +
+  scale_fill_manual(values = cols3, name = NULL) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  scale_x_discrete(
+  labels = c(
+    BP_SYSTOLIC = "BP Systolic",
+    BP_DIASTOLIC = "BP Diastolic",
+    BMI = "Body Mass Index",
+    ALB = "Serum Albumin",
+    TRIG = "Triglycerides",
+    CHOL = "Cholesterol",
+    A1C = "Hemoglobin A1C",
+    HCST = "Homocysteine",
+    CRP = "C-Reactive Protein",
+    CREAT_C = "Creatinine Clearance"
+  )
+)  +
+  labs(
+    x = "ALI Component",
+    y = "Proportion of Measurements"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.title = element_text(face = "bold"),
+    legend.position = "top",
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  coord_flip()
+histogram_missing
+ggsave(
+  filename = "~/Documents/missALI_prediction/figures/miss_healthy_unhealthy_barplot.png",
+  plot = histogram_missing,
+  device = "png",
+  width = 10,
+  height = 7,
+  units = "in"
+)
+```
+
+## Figure 5
+##### Missingness upset plot displaying combinations of allostatic load index (ALI) components that were missing together for patients.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE, include = FALSE}
+## Rename columns before making upset plot so that labels are readable
+upset_plot = hosp_dat |> 
+  rename(
+    "Hemoglobin A1C" = A1C, 
+    "Serum Albumin" = ALB,
+    "Body Mass Index" = BMI,
+    "Homocysteine" = HCST,
+    "Systolic Blood Pressure" = BP_SYSTOLIC,
+    "Diastolic Blood Pressure" = BP_DIASTOLIC,
+    "Cholesterol" = CHOL,
+    "C-Reactive Protein" = CRP,
+    "Creatinine Clearance" = CREAT_C,
+    "Triglycerides" = TRIG
+  ) |> 
+  select(-starts_with("NUM")) |> 
+  gg_miss_upset(
+    nsets = 10,
+    sets.bar.color = "#218288",    
+    main.bar.color = "#218288",
+    matrix.color = "#218288")
+png("~/Documents/missALI_prediction/figures/ali_components_upset.png", width = 800, height = 800, res = 150)
+upset_plot
+dev.off()
+upset_plot
+```
+
+## Supplemental Figure S1
+##### Distribution of number of hospitalizations in the $2$-year study period across n = 1000 patients.
+
+```{r, echo = FALSE, message = FALSE, warning = FALSE}
+hosp_bar = hosp_dat |> 
+  ggplot(aes(x = NUM_ADMIT)) + 
+  geom_bar(fill = "#218288") + 
+  theme_minimal(base_size = 14) +
+  labs(x = "Count of Hospitalizations",
+       y = "Count of Patients") + 
+  theme(axis.title = element_text(face = "bold"), 
+        title = element_text(face = "bold"))
+hosp_bar
+ggsave(
+  filename = "~/Documents/missALI_prediction/figures/count_hosp_bar.png",
+  plot = hosp_bar,
+  device = "png",
+  width = 10,
+  height = 7,
+  units = "in"
+)
+```
+
 # Results {.tabset}
+
+```{r, echo = FALSE}
+# Helper function to make ggplot ROC curves from full-sample fits 
+full_sample_roc = function(roc_obj, line_col, method_title) {
+  ## Create label AUC = 0.XXX
+  label_auc = paste0("= ", round(auc(roc_obj), 3), " (", 
+                     round(ci.auc(roc_obj)[1], 3), ", ", 
+                     round(ci.auc(roc_obj)[2], 3), ")")
+  
+  ## Make dataframe of ROC coordinates to plot
+  #plot_roc_df = coords(roc_obj)
+  
+  ## Plot ROC curve(s) using ggplot2
+  roc_obj |>
+    ### Plot ROC coordinates
+    ggroc(legacy.axes = TRUE, color = line_col) + 
+    ### Add dashed line of equality for reference
+    geom_abline(slope = 1,
+                intercept = 0,
+                linewidth = 0.5,
+                linetype = "dashed") + 
+    ### Final formatting
+    theme_minimal(base_size = 14) +
+    coord_equal() +
+    annotate(geom = "text",
+             x = 1,
+             y = 0.07,
+             hjust = 1,
+             vjust = 0,
+             label = "bold('AUC (95% CI)')", 
+             parse = TRUE) +
+    annotate(geom = "text",
+             x = 1,
+             y = 0,
+             hjust = 1,
+             vjust = 0,
+             label = label_auc) +
+    labs(x = "1 - Specificity",
+         y = "Sensitivity", 
+         title = method_title) + 
+    theme(axis.title = element_text(face = "bold"), 
+          title = element_text(face = "bold"))
+}
+
+# Define color scheme 
+miss_meth_cols = c("#2b9d8f", "#e76f51", "#1b3c73", "#c1dbd0", 
+                   "#a8c56e", "#6a4c93", "#e8b89a", "#c0404a")
+```
+
+```{r}
+# Create empty dataframe to save AUC for all methods/models
+save_auc = data.frame()
+```
 
 ## Model 1: Logistic Regression {.tabset}
 ### Summary Measure Models {.tabset}
 #### Approach 1: Proportion of Non-Missing Components That Are Unhealthy 
-
 ##### Fit to Full Sample 
 
 ```{r}
@@ -44,14 +370,23 @@ pred_prob_log_prop = mod_log_prop$fit |>
   predict(type = "response")
 
 # Make the ROC curve 
+## Include AUC (95% Confidence Interval)
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_prop)
-plot(roc_curve, 
-     col = "#CD0BBC", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
+roc_log_prop = full_sample_roc(roc_obj = roc_curve, 
+                               line_col = miss_meth_cols[1], 
+                               method_title = "Complete-Case\nProportion")
+roc_log_prop
 
-# Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Complete-Case Proportion",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -73,10 +408,22 @@ kfold_log_cc_prop$all_fold_auc
 median(kfold_log_cc_prop$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_cc_prop |> 
+roc_log_prop_k = kfold_log_cc_prop |> 
   kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            overlay_average = TRUE,
+            line_col = miss_meth_cols[1]) 
+roc_log_prop_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Complete-Case Proportion", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_log_cc_prop$all_fold_auc)
+    ))
 ```
 
 #### Approach 2: Counts of Unhealthy and Missing Components 
@@ -99,14 +446,23 @@ pred_prob_log_num = mod_log_num$fit |>
   predict(type = "response")
 
 # Make the ROC curve 
+## Include AUC (95% Confidence Interval)
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_num)
-plot(roc_curve, 
-     col = "#CD0BBC", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
+roc_log_num = full_sample_roc(roc_obj = roc_curve, 
+                              line_col = miss_meth_cols[2], 
+                              method_title = "Counts of Unhealthy and\nMissing Components")
+roc_log_num
 
-# Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Counts of Unhealthy and Missing Components", 
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -128,10 +484,22 @@ kfold_log_num_miss$all_fold_auc
 median(kfold_log_num_miss$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_num_miss |> 
+roc_log_num_k = kfold_log_num_miss |> 
   kfold_roc(plot_folds = 1:5, 
             overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            line_col = miss_meth_cols[2]) 
+roc_log_num_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Counts of Unhealthy and Missing Components", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_log_num_miss$all_fold_auc)
+    ))
 ```
 
 #### Approach 3a: Best-Case Imputation
@@ -155,14 +523,23 @@ pred_prob_log_best = mod_log_best$fit |>
   predict(type = "response")
 
 # Make the ROC curve 
+## Include AUC (95% Confidence Interval)
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_best)
-plot(roc_curve, 
-     col = "#CD0BBC", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
+roc_log_best = full_sample_roc(roc_obj = roc_curve, 
+                               line_col = miss_meth_cols[3], 
+                               method_title = "Best Case\nImputation")
+roc_log_best
 
-# Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -184,10 +561,22 @@ kfold_log_best$all_fold_auc
 median(kfold_log_best$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_best |> 
+roc_log_best_k = kfold_log_best |> 
   kfold_roc(plot_folds = 1:5, 
             overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            line_col = miss_meth_cols[3]) 
+roc_log_best_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_log_best$all_fold_auc)
+    ))
 ```
 
 #### Approach 3b: Worst-Case Imputation
@@ -211,14 +600,23 @@ pred_prob_log_worst = mod_log_worst$fit |>
   predict(type = "response")
 
 # Make the ROC curve 
+## Include AUC (95% Confidence Interval)
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_worst)
-plot(roc_curve, 
-     col = "#CD0BBC", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
+roc_log_worst = full_sample_roc(roc_obj = roc_curve, 
+                                line_col = miss_meth_cols[4], 
+                                method_title = "Worst Case\nImputation")
+roc_log_worst
 
-# Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -240,10 +638,40 @@ kfold_log_worst$all_fold_auc
 median(kfold_log_worst$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_worst |> 
+roc_log_worst_k = kfold_log_worst |> 
   kfold_roc(plot_folds = 1:5, 
             overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            line_col = miss_meth_cols[4]) 
+roc_log_worst_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_log_worst$all_fold_auc)
+    ))
+```
+
+#### ROC Curves for Approaches 1-3b 
+
+The following plot displays the ROC curves for the four summary measure models side-by-side. 
+
+```{r, echo = FALSE, fig.width = 14, fig.height = 8}
+# comb_plot = (roc_log_prop | roc_log_prop_k) / 
+#   (roc_log_num | roc_log_num_k) / 
+#   (roc_log_best | roc_log_best_k) / 
+#   (roc_log_worst | roc_log_worst_k) + 
+comb_plot = (roc_log_prop | roc_log_num | roc_log_best | roc_log_worst) / 
+  (roc_log_prop_k |  roc_log_num_k | roc_log_best_k | roc_log_worst_k) #+ 
+  #plot_annotation(tag_levels = "A")
+comb_plot
+ggsave(filename = "~/Documents/missALI_prediction/figures/all_summ_meas_roc_log.png", 
+       plot = comb_plot, 
+       device = "png", width = 14, height = 8, units = "in")
 ```
 
 ### Separate Component Models {.tabset}
@@ -270,14 +698,23 @@ pred_prob_log_best = mod_log_best$fit |>
   predict(type = "response")
 
 # Make the ROC curve 
+## Include AUC (95% Confidence Interval)
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_best)
-plot(roc_curve, 
-     col = "#CD0BBC", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
+roc_log_best = full_sample_roc(roc_obj = roc_curve, 
+                               line_col = miss_meth_cols[5], 
+                               method_title = "Best Case\nImputation")
+roc_log_best
 
-# Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -300,10 +737,22 @@ kfold_log_best_sep$all_fold_auc
 median(kfold_log_best_sep$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_best_sep |> 
+roc_log_best_k = kfold_log_best_sep |> 
   kfold_roc(plot_folds = 1:5, 
             overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            line_col = miss_meth_cols[5]) 
+roc_log_best_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_log_best_sep$all_fold_auc)
+    ))
 ```
 
 #### Approach 4b: Worst-Case Case Imputation (Separate)
@@ -328,14 +777,23 @@ pred_prob_log_worst = mod_log_worst$fit |>
   predict(type = "response")
 
 # Make the ROC curve 
+## Include AUC (95% Confidence Interval)
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_worst)
-plot(roc_curve, 
-     col = "#CD0BBC", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
+roc_log_worst = full_sample_roc(roc_obj = roc_curve, 
+                                line_col = miss_meth_cols[6], 
+                                method_title = "Worst Case\nImputation")
+roc_log_worst
 
-# Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -358,13 +816,27 @@ kfold_log_worst_sep$all_fold_auc
 median(kfold_log_worst_sep$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_worst_sep |> 
+roc_log_worst_k = kfold_log_worst_sep |> 
   kfold_roc(plot_folds = 1:5, 
             overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            line_col = miss_meth_cols[6]) 
+roc_log_worst_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_log_worst_sep$all_fold_auc)
+    ))
 ```
 
 #### Approach 5: Missingness as a Category (Separate)
+
+##### Fit to Full Sample
 
 ```{r}
 # Logistic regression + missing as a category (separate components)
@@ -382,21 +854,29 @@ pred_prob_log_cat = mod_log_cat$fit |>
   predict(type = "response")
 
 # Make the ROC curve 
+## Include AUC (95% Confidence Interval)
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_cat)
-plot(roc_curve, 
-     col = "#CD0BBC", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
+roc_log_cat = full_sample_roc(roc_obj = roc_curve, 
+                              line_col = miss_meth_cols[7], 
+                              method_title = "Missingness as\na Category")
+roc_log_cat
 
-# Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Missingness as a Category", 
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
-##### 5-Fold Cross-Validated (Empty Categories -- Can't Run)
 
 ```{r, eval = FALSE}
 # Make fold assignment reproducible (same for all models + approaches)
-set.seed(919)
+set.seed(918)
 
 # 5-fold cross validation of the logistic regression model with best-case imputation
 kfold_log_cat_sep = kfold_validate(outcome = "ANY_ADMIT", 
@@ -408,20 +888,130 @@ kfold_log_cat_sep = kfold_validate(outcome = "ANY_ADMIT",
                                    folds = 5)
 
 ## View AUC from 5 folds 
-kfold_log_cat_sep$all_fold_auc
-median(kfold_log_cat_sep$all_fold_auc) ### summarized by median
+kfold_log_worst_sep$all_fold_auc
+median(kfold_log_worst_sep$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_cat_sep |> 
+roc_log_worst_k = kfold_log_worst_sep |> 
   kfold_roc(plot_folds = 1:5, 
             overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            line_col = miss_meth_cols[6]) 
+roc_log_worst_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Missingness as a Category", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_log_worst_sep$all_fold_auc)
+    ))
+```
+
+#### Approach 6: Pattern Submodels (Separate)
+
+##### Fit to Full Sample
+
+```{r}
+# Logistic regression + pattern submodels (separate components)
+## Define a mapping vector: index is the small row number, value is the parent row number
+# parent_mapping = c(
+#   "9" = 1, "10" = 1, "11" = 2, "12" = 2, "13" = 3, 
+#   "14" = 5, "15" = 4, "16" = 4, "17" = 2, "18" = 3
+# )
+mod_log_patsub = pattern_submod_approach(outcome = "ANY_ADMIT",
+                                         covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                         data = hosp_dat,
+                                         family = "binomial")
+
+# Calculate predicted probabilities
+pred_prob_log_patsub = mod_log_patsub |> 
+  predict_pattern_submod()
+
+# Make the ROC curve 
+## Include AUC (95% Confidence Interval)
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_log_patsub)
+roc_log_submod = full_sample_roc(roc_obj = roc_curve, 
+                                 line_col = miss_meth_cols[8], 
+                                 method_title = "Pattern\nSubmodels")
+roc_log_submod
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Pattern Submodels", 
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
+# Make fold assignment reproducible (same for all models + approaches)
+set.seed(918)
+
+# 5-fold cross validation of the logistic regression model with best-case imputation
+kfold_log_submod_sep = kfold_validate(outcome = "ANY_ADMIT", 
+                                      covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                      data = hosp_dat, 
+                                      family = "binomial", 
+                                      miss_method = "patsub", 
+                                      comp_sep = TRUE,
+                                      folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_submod_sep$all_fold_auc
+median(kfold_log_submod_sep$all_fold_auc) ### summarized by median
+
+## Plot individual ROC curves from 5 folds with median over top 
+roc_log_submod_k = kfold_log_submod_sep |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            line_col = miss_meth_cols[8]) 
+roc_log_submod_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Logistic", 
+      Missing = "Pattern Submodels", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_log_submod_sep$all_fold_auc)
+    ))
+```
+
+#### ROC Curves for Approaches 4a-6 
+
+The following plot displays the ROC curves for the three separate component models side-by-side. 
+
+```{r, echo = FALSE, fig.width = 9, fig.height = 9}
+# comb_plot = (roc_log_best | roc_log_worst | roc_log_cat) / 
+#   (roc_log_best_k | roc_log_worst_k | plot_spacer()) + 
+#   plot_layout(heights = c(1, 1), widths = c(1, 1, 1))
+design <- "
+ABCD
+EF#G
+"
+comb_plot <- (roc_log_best + roc_log_worst + roc_log_cat + roc_log_submod +
+              roc_log_best_k + roc_log_worst_k + roc_log_submod_k) +
+  plot_layout(design = design)
+comb_plot
+ggsave(filename = "~/Documents/missALI_prediction/figures/all_sep_comp_roc_log.png", 
+       plot = comb_plot, 
+       device = "png", width = 14, height = 8, units = "in")
 ```
 
 ## Model 2: Random Forest {.tabset}
 ### Summary Measure Models {.tabset}
 #### Approach 1: Proportion of Non-Missing Components That Are Unhealthy 
-
 ##### Fit to Full Sample 
 
 ```{r}
@@ -440,13 +1030,31 @@ pred_prob_rf_prop = mod_rf_prop$fit$predictions[, 1]
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_prop)
-plot(roc_curve, 
-     col = "cornflowerblue", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Complete-Case Proportion",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
+```
+
+```{r, include = FALSE}
+# Make the ROC curve 
+## Include AUC (95% Confidence Interval)
+roc_rf_prop = full_sample_roc(roc_obj = roc_curve, 
+                              line_col = miss_meth_cols[1], 
+                              method_title = "Complete-Case\nProportion")
+roc_rf_prop
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -468,11 +1076,24 @@ kfold_rf_cc_prop = kfold_validate(outcome = "ANY_ADMIT",
 kfold_rf_cc_prop$all_fold_auc
 median(kfold_rf_cc_prop$all_fold_auc) ### summarized by median
 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Complete-Case Proportion", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_rf_cc_prop$all_fold_auc)
+    ))
+```
+
+```{r, include = FALSE}
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_rf_cc_prop |> 
+roc_rf_prop_k = kfold_rf_cc_prop |> 
   kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            overlay_average = TRUE,
+            line_col = miss_meth_cols[1]) 
 ```
 
 #### Approach 2: Counts of Unhealthy and Missing Components 
@@ -495,13 +1116,22 @@ pred_prob_rf_num = mod_rf_num$fit$predictions[, 1]
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_num)
-plot(roc_curve, 
-     col = "cornflowerblue", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Counts of Unhealthy and Missing Components",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -522,11 +1152,16 @@ kfold_log_num_miss = kfold_validate(outcome = "ANY_ADMIT",
 kfold_log_num_miss$all_fold_auc
 median(kfold_log_num_miss$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_num_miss |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Counts of Unhealthy and Missing Components", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_log_num_miss$all_fold_auc)
+    ))
 ```
 
 #### Approach 3a: Best-Case Imputation
@@ -550,13 +1185,22 @@ pred_prob_rf_best = mod_rf_best$fit$predictions[, 1]
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_best)
-plot(roc_curve, 
-     col = "cornflowerblue", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Best Case Imputation",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -578,11 +1222,16 @@ kfold_rf_best = kfold_validate(outcome = "ANY_ADMIT",
 kfold_rf_best$all_fold_auc
 median(kfold_rf_best$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_rf_best |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_rf_best$all_fold_auc)
+    ))
 ```
 
 #### Approach 3b: Worst-Case Imputation
@@ -606,13 +1255,22 @@ pred_prob_rf_worst = mod_rf_worst$fit$predictions[, 1]
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_worst)
-plot(roc_curve, 
-     col = "cornflowerblue", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Worst Case Imputation",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -634,11 +1292,16 @@ kfold_rf_worst = kfold_validate(outcome = "ANY_ADMIT",
 kfold_rf_worst$all_fold_auc
 median(kfold_rf_worst$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_rf_worst |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_rf_worst$all_fold_auc)
+    ))
 ```
 
 ### Separate Component Models {.tabset}
@@ -665,13 +1328,22 @@ pred_prob_rf_best_sep = mod_rf_best_sep$fit$predictions[, 1]
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_best_sep)
-plot(roc_curve, 
-     col = "cornflowerblue", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Best Case Imputation",
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -694,11 +1366,16 @@ kfold_rf_best_sep = kfold_validate(outcome = "ANY_ADMIT",
 kfold_rf_best_sep$all_fold_auc
 median(kfold_rf_best_sep$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_rf_best_sep |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_rf_best_sep$all_fold_auc)
+    ))
 ```
 
 #### Approach 4b: Worst-Case Case Imputation (Separate)
@@ -723,13 +1400,22 @@ pred_prob_rf_worst_sep = mod_rf_worst_sep$fit$predictions[, 1]
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_worst_sep)
-plot(roc_curve, 
-     col = "cornflowerblue", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Worst Case Imputation",
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -752,14 +1438,21 @@ kfold_rf_worst_sep = kfold_validate(outcome = "ANY_ADMIT",
 kfold_rf_worst_sep$all_fold_auc
 median(kfold_rf_worst_sep$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_rf_worst_sep |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_rf_worst_sep$all_fold_auc)
+    ))
 ```
 
 #### Approach 5: Missingness as a Category (Separate)
+
+##### Fit to Full Sample 
 
 ```{r}
 # Logistic regression + missing as a category (separate components)
@@ -777,39 +1470,98 @@ pred_prob_rf_cat = mod_rf_cat$fit$predictions[, 1]
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_cat)
-plot(roc_curve, 
-     col = "cornflowerblue", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Missingness as a Category",
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
-##### 5-Fold Cross-Validated (Empty Categories -- Can't Run)
 
-```{r, eval = FALSE}
+#### Approach 6: Pattern Submodels (Separate)
+
+##### Fit to Full Sample
+
+```{r}
+# Random forest + pattern submodels (separate components)
+mod_rf_patsub = pattern_submod_approach(outcome = "ANY_ADMIT",
+                                        covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                        data = hosp_dat,
+                                        family = "binomial", 
+                                        use_glm = FALSE)
+
+# Calculate predicted probabilities
+pred_prob_rf_patsub = mod_rf_patsub |> 
+  predict_pattern_submod()
+
+# Make the ROC curve 
+## Include AUC (95% Confidence Interval)
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_rf_patsub)
+roc_rf_submod = full_sample_roc(roc_obj = roc_curve, 
+                                 line_col = miss_meth_cols[8], 
+                                 method_title = "Pattern\nSubmodels")
+roc_rf_submod
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Pattern Submodels", 
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
 # Make fold assignment reproducible (same for all models + approaches)
-set.seed(919)
+set.seed(918)
 
-# 5-fold cross validation of the logistic regression model with best-case imputation
-kfold_log_cat_sep = kfold_validate(outcome = "ANY_ADMIT", 
-                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                                   data = hosp_dat, 
-                                   family = "binomial", 
-                                   miss_method = "cat", 
-                                   comp_sep = TRUE,
-                                   folds = 5)
+# 5-fold cross validation of the random forest with pattern submodels
+kfold_rf_submod_sep = kfold_validate(outcome = "ANY_ADMIT", 
+                                    covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                    data = hosp_dat, 
+                                    family = "binomial", 
+                                    miss_method = "patsub", 
+                                    comp_sep = TRUE,
+                                    use_glm = FALSE,
+                                    folds = 5)
 
 ## View AUC from 5 folds 
-kfold_log_cat_sep$all_fold_auc
-median(kfold_log_cat_sep$all_fold_auc) ### summarized by median
+kfold_rf_submod_sep$all_fold_auc
+median(kfold_rf_submod_sep$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_cat_sep |> 
+roc_rf_submod_k = kfold_rf_submod_sep |> 
   kfold_roc(plot_folds = 1:5, 
             overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            line_col = miss_meth_cols[8]) 
+roc_rf_submod_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Random Forest", 
+      Missing = "Pattern Submodels", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_rf_submod_sep$all_fold_auc)
+    ))
 ```
 
 ## Model 3: Poisson Regression {.tabset}
@@ -835,13 +1587,30 @@ pred_prob_pois_prop = mod_pois_prop$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_prop)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Complete-Case Proportion",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
+```
+```{r, include = FALSE}
+# Make the ROC curve 
+## Include AUC (95% Confidence Interval)
+roc_pois_prop = full_sample_roc(roc_obj = roc_curve, 
+                              line_col = miss_meth_cols[1], 
+                              method_title = "Complete-Case\nProportion")
+roc_pois_prop
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -862,13 +1631,25 @@ kfold_pois_cc_prop = kfold_validate(outcome = "NUM_ADMIT",
 kfold_pois_cc_prop$all_fold_auc
 median(kfold_pois_cc_prop$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_pois_cc_prop |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Complete-Case Proportion", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_pois_cc_prop$all_fold_auc)
+    ))
 ```
 
+```{r, include = FALSE}
+## Plot individual ROC curves from 5 folds with median over top 
+roc_pois_prop_k = kfold_pois_cc_prop |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE,
+            line_col = miss_meth_cols[1]) 
+```
 
 #### Approach 2: Counts of Unhealthy and Missing Components 
 
@@ -891,13 +1672,22 @@ pred_prob_pois_num = mod_pois_num$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_num)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Counts of Unhealthy and Missing Components",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -918,11 +1708,16 @@ kfold_pois_num_miss = kfold_validate(outcome = "ANY_ADMIT",
 kfold_pois_num_miss$all_fold_auc
 median(kfold_pois_num_miss$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_pois_num_miss |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Counts of Unhealthy and Missing Components", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_pois_num_miss$all_fold_auc)
+    ))
 ```
 
 #### Approach 3a: Best-Case Imputation
@@ -947,13 +1742,22 @@ pred_prob_pois_best = mod_pois_best$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_best)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Best Case Imputation",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -974,11 +1778,16 @@ kfold_pois_best = kfold_validate(outcome = "NUM_ADMIT",
 kfold_pois_best$all_fold_auc
 median(kfold_pois_best$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_pois_best |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_pois_best$all_fold_auc)
+    ))
 ```
 
 #### Approach 3b: Worst-Case Imputation
@@ -1003,13 +1812,22 @@ pred_prob_pois_worst = mod_pois_worst$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_worst)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Worst Case Imputation",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -1030,11 +1848,16 @@ kfold_pois_worst = kfold_validate(outcome = "NUM_ADMIT",
 kfold_pois_worst$all_fold_auc
 median(kfold_pois_worst$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_pois_worst |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_pois_worst$all_fold_auc)
+    ))
 ```
 
 
@@ -1066,13 +1889,22 @@ pred_prob_pois_best_sep = mod_pois_best_sep$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_best_sep)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Best Case Imputation",
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -1094,11 +1926,16 @@ kfold_pois_best_sep = kfold_validate(outcome = "NUM_ADMIT",
 kfold_pois_best_sep$all_fold_auc
 median(kfold_pois_best_sep$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_pois_best_sep |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_pois_best_sep$all_fold_auc)
+    ))
 ```
 
 #### Approach 4b: Worst-Case Case Imputation (Separate)
@@ -1124,13 +1961,22 @@ pred_prob_pois_worst_sep = mod_pois_worst_sep$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_worst_sep)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Worst Case Imputation",
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -1152,11 +1998,16 @@ kfold_pois_worst_sep = kfold_validate(outcome = "NUM_ADMIT",
 kfold_pois_worst_sep$all_fold_auc
 median(kfold_pois_worst_sep$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_pois_worst_sep |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_pois_worst_sep$all_fold_auc)
+    ))
 ```
 
 #### Approach 5: Missingness as a Category (Separate)
@@ -1178,42 +2029,97 @@ pred_prob_pois_cat = mod_pois_cat$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_cat)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Missingness as a Category",
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 
-##### 5-Fold Cross-Validated (Empty Categories -- Can't Run)
+#### Approach 6: Pattern Submodels (Separate)
 
-```{r, eval = FALSE}
+##### Fit to Full Sample
+
+```{r}
+# Poisson + pattern submodels (separate components)
+mod_pois_patsub = pattern_submod_approach(outcome = "NUM_ADMIT",
+                                          covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                          data = hosp_dat,
+                                          family = "poisson")
+
+# Calculate predicted probabilities
+pred_prob_pois_patsub = mod_pois_patsub |> 
+  predict_pattern_submod()
+
+# Make the ROC curve 
+## Include AUC (95% Confidence Interval)
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_pois_patsub)
+roc_pois_submod = full_sample_roc(roc_obj = roc_curve, 
+                                  line_col = miss_meth_cols[8], 
+                                  method_title = "Pattern\nSubmodels")
+roc_pois_submod
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Pattern Submodels", 
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
 # Make fold assignment reproducible (same for all models + approaches)
-set.seed(919)
+set.seed(918)
 
-# 5-fold cross validation of the poisson model with best-case imputation
-kfold_pois_cat_sep = kfold_validate(outcome = "NUM_ADMIT", 
-                                   covar = c("SEX", "AGE_AT_ENCOUNTER"),
-                                   data = hosp_dat, 
-                                   family = "poisson", 
-                                   miss_method = "cat", 
-                                   comp_sep = TRUE,
-                                   folds = 5)
+# 5-fold cross validation of the random forest with pattern submodels
+kfold_pois_submod_sep = kfold_validate(outcome = "NUM_ADMIT", 
+                                       covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                       data = hosp_dat, 
+                                       family = "poisson", 
+                                       miss_method = "patsub", 
+                                       comp_sep = TRUE,
+                                       folds = 5)
 
 ## View AUC from 5 folds 
-kfold_pois_cat_sep$all_fold_auc
-median(kfold_pois_cat_sep$all_fold_auc) ### summarized by median
+kfold_pois_submod_sep$all_fold_auc
+median(kfold_pois_submod_sep$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_pois_cat_sep |> 
+roc_pois_submod_k = kfold_pois_submod_sep |> 
   kfold_roc(plot_folds = 1:5, 
             overlay_average = TRUE, 
-            color_by_fold = FALSE) 
-```
+            line_col = miss_meth_cols[8]) 
+roc_pois_submod_k
 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Poisson", 
+      Missing = "Pattern Submodels", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_pois_submod_sep$all_fold_auc)
+    ))
+```
 
 ## Model 4: Zero-Inflated Poisson Regression {.tabset}
 ### Summary Measure Models {.tabset}
@@ -1239,13 +2145,31 @@ pred_prob_zip_prop = mod_zip_prop$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_prop)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Complete-Case Proportion",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
+```
+
+```{r, include = FALSE}
+# Make the ROC curve 
+## Include AUC (95% Confidence Interval)
+roc_zip_prop = full_sample_roc(roc_obj = roc_curve, 
+                               line_col = miss_meth_cols[1], 
+                               method_title = "Complete-Case\nProportion")
+roc_zip_prop
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -1267,11 +2191,24 @@ kfold_zip_cc_prop = kfold_validate(outcome = "NUM_ADMIT",
 kfold_zip_cc_prop$all_fold_auc
 median(kfold_zip_cc_prop$all_fold_auc) ### summarized by median
 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Complete-Case Proportion", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_zip_cc_prop$all_fold_auc)
+    ))
+```
+
+```{r, include = FALSE}
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_zip_cc_prop |> 
+roc_zip_prop_k = kfold_zip_cc_prop |> 
   kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            overlay_average = TRUE,
+            line_col = miss_meth_cols[1]) 
 ```
 
 #### Approach 2: Counts of Unhealthy and Missing Components 
@@ -1296,13 +2233,22 @@ pred_prob_zip_num = mod_zip_num$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_num)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Counts of Unhealthy and Missing Components",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -1324,11 +2270,16 @@ kfold_zip_num_miss = kfold_validate(outcome = "ANY_ADMIT",
 kfold_zip_num_miss$all_fold_auc
 median(kfold_zip_num_miss$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_zip_num_miss |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Counts of Unhealthy and Missing Components", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_zip_num_miss$all_fold_auc)
+    ))
 ```
 
 #### Approach 3a: Best-Case Imputation
@@ -1354,13 +2305,22 @@ pred_prob_zip_best = mod_zip_best$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_best)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Best Case Imputation",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -1371,22 +2331,27 @@ set.seed(918)
 
 # 5-fold cross validation of the  ZIP with best-case imputation
 kfold_zip_best = kfold_validate(outcome = "NUM_ADMIT", 
-                               covar = c("SEX", "AGE_AT_ENCOUNTER"),
-                               zeros = c("SEX", "AGE_AT_ENCOUNTER"),
-                               data = hosp_dat, 
-                               family = "poisson", 
-                               miss_method = "best", 
-                              folds = 5)
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+                                data = hosp_dat, 
+                                family = "poisson", 
+                                miss_method = "best", 
+                                folds = 5)
 
 ## View AUC from 5 folds 
 kfold_zip_best$all_fold_auc
 median(kfold_zip_best$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_zip_best |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_zip_best$all_fold_auc)
+    ))
 ```
 
 #### Approach 3b: Worst-Case Imputation
@@ -1412,13 +2377,22 @@ pred_prob_zip_worst = mod_zip_worst$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_worst)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Worst Case Imputation",
+      Separate_Components = "Summary Measure",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -1440,11 +2414,16 @@ kfold_zip_worst = kfold_validate(outcome = "NUM_ADMIT",
 kfold_zip_worst$all_fold_auc
 median(kfold_zip_worst$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_zip_worst |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Summary Measure",
+      Fit = "K-Fold", 
+      AUC = median(kfold_zip_worst$all_fold_auc)
+    ))
 ```
 
 ### Separate Component Models {.tabset}
@@ -1473,13 +2452,22 @@ pred_prob_zip_best_sep = mod_zip_best_sep$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_best_sep)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Best Case Imputation",
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -1502,11 +2490,16 @@ kfold_zip_best_sep = kfold_validate(outcome = "NUM_ADMIT",
 kfold_zip_best_sep$all_fold_auc
 median(kfold_zip_best_sep$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_zip_best_sep |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Best Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_zip_best_sep$all_fold_auc)
+    ))
 ```
 
 #### Approach 4b: Worst-Case Case Imputation (Separate)
@@ -1533,13 +2526,22 @@ pred_prob_zip_worst_sep = mod_zip_worst_sep$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_worst_sep)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Worst Case Imputation",
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
 ##### 5-Fold Cross-Validated 
@@ -1562,11 +2564,16 @@ kfold_zip_worst_sep = kfold_validate(outcome = "NUM_ADMIT",
 kfold_zip_worst_sep$all_fold_auc
 median(kfold_zip_worst_sep$all_fold_auc) ### summarized by median
 
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_zip_worst_sep |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Worst Case Imputation", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_zip_worst_sep$all_fold_auc)
+    ))
 ```
 
 #### Approach 5: Missingness as a Category (Separate)
@@ -1589,39 +2596,157 @@ pred_prob_zip_cat = mod_zip_cat$fit |>
 
 # Make the ROC curve 
 roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_cat)
-plot(roc_curve, 
-     col = "palegreen", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
 
 # Calculate AUC (95% Confidence Interval)
-ci.auc(roc_curve)
+paste0(round(auc(roc_curve), 3), 
+       " (", round(ci.auc(roc_curve)[1], 3), ", ", 
+       round(ci.auc(roc_curve)[2], 3), ")")
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Missingness as a Category",
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
 ```
 
+#### Approach 6: Pattern Submodels (Separate)
 
-##### 5-Fold Cross-Validated (Empty Categories -- Can't Run)
+##### Fit to Full Sample
 
-```{r, eval = FALSE}
+```{r}
+# ZIP + pattern submodels (separate components)
+mod_zip_patsub = pattern_submod_approach(
+  outcome = "NUM_ADMIT",
+  covar = c("SEX", "AGE_AT_ENCOUNTER"),
+  zeros = c("SEX", "AGE_AT_ENCOUNTER"),
+  data = hosp_dat,
+  family = "poisson"
+  )
+
+# Calculate predicted probabilities
+pred_prob_zip_patsub = mod_zip_patsub |> 
+  predict_pattern_submod()
+
+# Make the ROC curve 
+## Include AUC (95% Confidence Interval)
+roc_curve = roc(hosp_dat$ANY_ADMIT, pred_prob_zip_patsub)
+roc_zip_submod = full_sample_roc(
+  roc_obj = roc_curve, 
+  line_col = miss_meth_cols[8], 
+  method_title = "Pattern\nSubmodels"
+  )
+roc_zip_submod
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Pattern Submodels", 
+      Separate_Components = "Separate Components",
+      Fit = "Full-Sample", 
+      AUC = auc(roc_curve)
+    ))
+```
+
+##### 5-Fold Cross-Validated 
+
+```{r}
 # Make fold assignment reproducible (same for all models + approaches)
-set.seed(919)
+set.seed(918)
 
-# 5-fold cross validation of the ZIP model with best-case imputation
-kfold_zip_cat_sep = kfold_validate(outcome = "NUM_ADMIT", 
-                                   covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                                   zeros = c("SEX", "AGE_AT_ENCOUNTER"),
-                                   data = hosp_dat, 
-                                   family = "poisson", 
-                                   miss_method = "cat", 
-                                   comp_sep = TRUE,
-                                   folds = 5)
+# 5-fold cross validation of the ZIP with pattern submodels
+kfold_zip_submod_sep = kfold_validate(
+  outcome = "NUM_ADMIT", 
+  covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+  zeros = c("SEX", "AGE_AT_ENCOUNTER"), 
+  data = hosp_dat, 
+  family = "poisson", 
+  miss_method = "patsub", 
+  comp_sep = TRUE,
+  folds = 5
+  )
 
 ## View AUC from 5 folds 
-kfold_zip_cat_sep$all_fold_auc
-median(kfold_zip_cat_sep$all_fold_auc) ### summarized by median
+kfold_zip_submod_sep$all_fold_auc
+median(kfold_zip_submod_sep$all_fold_auc) ### summarized by median
 
 ## Plot individual ROC curves from 5 folds with median over top 
-kfold_zip_cat_sep |> 
+roc_zip_submod_k = kfold_zip_submod_sep |> 
   kfold_roc(plot_folds = 1:5, 
             overlay_average = TRUE, 
-            color_by_fold = FALSE) 
+            line_col = miss_meth_cols[8]) 
+roc_zip_submod_k
+
+# Save AUC to dataframe 
+save_auc = save_auc |> 
+  rbind(
+    data.frame(
+      Model = "Zero-Inflated Poisson", 
+      Missing = "Pattern Submodels", 
+      Separate_Components = "Separate Components",
+      Fit = "K-Fold", 
+      AUC = median(kfold_zip_submod_sep$all_fold_auc)
+    ))
+```
+
+# Barbell Plot: All Models and Methods 
+
+```{r, echo = FALSE, message = FALSE, cache = FALSE}
+save_auc |> 
+  write.csv("~/Documents/missALI_prediction/data/forest_plot_data.csv", 
+            row.names = FALSE)
+
+barbell_data = save_auc |>
+  dplyr::group_by(Missing, Fit, Separate_Components) |> 
+  dplyr::summarize(barbell_lb = min(AUC), 
+                   barbell_ub = max(AUC)) |> 
+  dplyr::ungroup() |> 
+  dplyr::mutate(
+    Separate_Components = factor(x = Separate_Components,
+                                 levels = c("Summary Measure", 
+                                            "Separate Components"))
+  ) 
+
+barbell_plot = save_auc |> 
+  dplyr::mutate(
+    Separate_Components = factor(x = Separate_Components,
+                                 levels = c("Summary Measure", 
+                                            "Separate Components"))
+  ) |> 
+  ggplot() + 
+  geom_linerange(data = barbell_data,
+                 aes(x = Missing, ymin = barbell_lb, ymax = barbell_ub,
+                     group = Fit),
+                 position = position_dodge(0.5),
+                 color = "#8c7b6b",
+                 linewidth = 4.5,
+                 alpha = 0.5) + 
+  geom_point(aes(x = Missing, y = AUC, color = Model, 
+             shape = Fit, group = Fit), position = position_dodge(0.5), size = 5) + 
+  facet_grid(rows = vars(Separate_Components), scales = "free") + 
+  scale_x_discrete(labels = scales::label_wrap(10)) +
+  labs(x = "Missing Data Method", y = "AUC") + 
+  coord_flip() + 
+  scale_color_manual(values = miss_meth_cols) + 
+  theme_minimal(base_size = 14) + 
+  theme(axis.title = element_text(face = "bold"),
+        legend.title = element_text(face = "bold"),
+        legend.box.margin = margin(0, 0, 0, -75), 
+        legend.position = "top", 
+        strip.background = element_rect(fill = "black"), 
+        strip.text = element_text(face = "bold", color = "white"), 
+        panel.border = element_rect(color = "black", fill = NA, linewidth = 0.5),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank()) + 
+  ggh4x::force_panelsizes(rows = c(1.33, 1)) #, respect = TRUE) 
+barbell_plot
+ggsave(filename = "~/Documents/missALI_prediction/figures/barbell_plot.png", 
+       plot = barbell_plot, 
+       device = "png", width = 10, height = 9, units = "in")
 ```

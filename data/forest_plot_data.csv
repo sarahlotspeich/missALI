@@ -12,8 +12,9 @@
 "Logistic","Worst Case Imputation","Separate Components","Full-Sample",0.644528606152632
 "Logistic","Worst Case Imputation","Separate Components","K-Fold",0.61208455013211
 "Logistic","Missingness as a Category","Separate Components","Full-Sample",0.702988623455809
-"Logistic","Pattern Submodels","Separate Components","Full-Sample",0.730046751378566
-"Logistic","Pattern Submodels","Separate Components","K-Fold",0.638682432432433
+"Logistic","Missingness as a Category","Separate Components","K-Fold",0.61208455013211
+"Logistic","Pattern Submodels","Separate Components","Full-Sample",0.727316065469569
+"Logistic","Pattern Submodels","Separate Components","K-Fold",0.632894736842105
 "Random Forest","Complete-Case Proportion","Summary Measure","Full-Sample",0.605940757219958
 "Random Forest","Complete-Case Proportion","Summary Measure","K-Fold",0.61917674871367
 "Random Forest","Counts of Unhealthy and Missing Components","Summary Measure","Full-Sample",0.612697235611586
@@ -27,6 +28,8 @@
 "Random Forest","Worst Case Imputation","Separate Components","Full-Sample",0.622231638916844
 "Random Forest","Worst Case Imputation","Separate Components","K-Fold",0.640175219023779
 "Random Forest","Missingness as a Category","Separate Components","Full-Sample",0.662334987140328
+"Random Forest","Pattern Submodels","Separate Components","Full-Sample",0.662876447081118
+"Random Forest","Pattern Submodels","Separate Components","K-Fold",0.543125
 "Poisson","Complete-Case Proportion","Summary Measure","Full-Sample",0.637221839669004
 "Poisson","Complete-Case Proportion","Summary Measure","K-Fold",0.633958633958634
 "Poisson","Counts of Unhealthy and Missing Components","Summary Measure","Full-Sample",0.62727251325694
@@ -40,6 +43,8 @@
 "Poisson","Worst Case Imputation","Separate Components","Full-Sample",0.637736815156169
 "Poisson","Worst Case Imputation","Separate Components","K-Fold",0.635762385762386
 "Poisson","Missingness as a Category","Separate Components","Full-Sample",0.68929910364838
+"Poisson","Pattern Submodels","Separate Components","Full-Sample",0.698389156676143
+"Poisson","Pattern Submodels","Separate Components","K-Fold",0.577232142857143
 "Zero-Inflated Poisson","Complete-Case Proportion","Summary Measure","Full-Sample",0.629653171366187
 "Zero-Inflated Poisson","Complete-Case Proportion","Summary Measure","K-Fold",0.635882635882636
 "Zero-Inflated Poisson","Counts of Unhealthy and Missing Components","Summary Measure","Full-Sample",0.620780879401568
@@ -53,3 +58,5 @@
 "Zero-Inflated Poisson","Worst Case Imputation","Separate Components","Full-Sample",0.622311092277722
 "Zero-Inflated Poisson","Worst Case Imputation","Separate Components","K-Fold",0.631433381433382
 "Zero-Inflated Poisson","Missingness as a Category","Separate Components","Full-Sample",0.669936025330907
+"Zero-Inflated Poisson","Pattern Submodels","Separate Components","Full-Sample",0.659863104801924
+"Zero-Inflated Poisson","Pattern Submodels","Separate Components","K-Fold",0.572019867549668

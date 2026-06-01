@@ -46,8 +46,10 @@ miss_cat_approach = function(outcome, covar = NULL, zeros = NULL, data, family, 
     count_levels = apply(X = data[, factor_ALI_comp],
                          MARGIN = 2,
                          FUN = function(x) length(unique(x)))
-    warning(paste("The following variables were constant and excluded from the model:",
-                  paste(factor_ALI_comp[count_levels == 1], collapse = ", ")))
+    if(any(count_levels == 1)) {
+      warning(paste("The following variables were constant and excluded from the model:",
+                    paste(factor_ALI_comp[count_levels == 1], collapse = ", ")))
+    }
     if (use_zeroinfl) {
       ### Hard coded: Collinearity between missing CHOL --> missing TRIG
       #### Group them into missing CHOL + TRIG
