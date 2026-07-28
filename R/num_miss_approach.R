@@ -3,6 +3,7 @@
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
 #' @param zeros optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.
+#' @param ali vector of names for the columns containing the ALI components.
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
@@ -12,7 +13,7 @@
 #' @export
 #' @importFrom ranger ranger
 #' @importFrom pscl zeroinfl
-num_miss_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE) {
+num_miss_approach = function(outcome, covar = NULL, zeros = NULL, ali, data, family, use_glm = TRUE) {
   # Create indicator of whether zero-inflation is needed
   use_zeroinfl = !is.null(zeros)
 
@@ -21,18 +22,14 @@ num_miss_approach = function(outcome, covar = NULL, zeros = NULL, data, family, 
     zeros = c("1")
   }
 
-  # Define vector of binary component names
-  ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
-               "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
-
   # Calculate number missing per patient
-  data$NUM_MISSING = apply(X = is.na(data[, ALI_comp]),
+  data$NUM_MISSING = apply(X = is.na(data[, ali]),
                            MARGIN = 1,
                            FUN = sum,
                            na.rm = TRUE)
 
   # Calculate number unhealthy per patient
-  data$NUM_UNHEALTHY = apply(X = data[, ALI_comp],
+  data$NUM_UNHEALTHY = apply(X = data[, ali],
                              MARGIN = 1,
                              FUN = sum,
                              na.rm = TRUE)

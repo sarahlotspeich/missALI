@@ -4,10 +4,14 @@
 \alias{predict_pattern_submod}
 \title{Prediction after pattern submodels approach to fitting regression models with missing ALI components}
 \usage{
-predict_pattern_submod(submod_res)
+predict_pattern_submod(submod_res, ali, newdata = NULL)
 }
 \arguments{
 \item{submod_res}{list of results from the \code{pattern_submod_approach()} function.}
+
+\item{ali}{vector of names for the columns containing the ALI components.}
+
+\item{newdata}{optional, dataframe from which to predict. If \code{newdata = NULL} (default), predictions are made based on data used to fit the pattern submodels.}
 }
 \value{
 vector of predictions per patient, using their pattern-specific submodel

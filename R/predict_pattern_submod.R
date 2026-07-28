@@ -1,18 +1,19 @@
 #' Prediction after pattern submodels approach to fitting regression models with missing ALI components
 #'
 #' @param submod_res list of results from the \code{pattern_submod_approach()} function.
+#' @param ali vector of names for the columns containing the ALI components.
 #' @param newdata optional, dataframe from which to predict. If \code{newdata = NULL} (default), predictions are made based on data used to fit the pattern submodels.
 #' @return vector of predictions per patient, using their pattern-specific submodel
 #' @export
 #' @import dplyr
-predict_pattern_submod = function(submod_res, newdata = NULL) {
+predict_pattern_submod = function(submod_res, ali, newdata = NULL) {
   if (is.null(newdata)) {
     # Make a copy of data (to subset from)
     pred_data = submod_res$data
   } else {
     # Create missingness indicators for each component
     newdata = newdata |>
-      mutate(across(A1C:BP_SYSTOLIC,
+      mutate(across(all_of(ali),
                     .fns = ~ if_else(is.na(.), 1, 0),
                     .names = "MISS_{.col}"))
 

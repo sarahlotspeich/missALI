@@ -8,6 +8,7 @@ case_approach(
   outcome,
   covar = NULL,
   zeros = NULL,
+  ali,
   data,
   family,
   best = TRUE,
@@ -21,6 +22,8 @@ case_approach(
 \item{covar}{optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).}
 
 \item{zeros}{optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.}
+
+\item{ali}{vector of names for the columns containing the ALI components.}
 
 \item{data}{dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.}
 

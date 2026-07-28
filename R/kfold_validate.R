@@ -3,6 +3,7 @@
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
 #' @param zeros optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.
+#' @param ali vector of names for the columns containing the ALI components.
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param miss_method missing data method. Default is \code{miss_method = "cc_prop"}; other options include \code{"num_miss"}, \code{"best"} case scenario, \code{"worst"} case scenario, missingness categories (\code{"cat"}), and pattern submodels (\code{"patsub"}).
@@ -16,7 +17,7 @@
 #' @importFrom pROC roc auc
 #' @import ranger
 
-kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, miss_method = "cc_prop", use_glm = TRUE, comp_sep = FALSE, folds = 5) {
+kfold_validate = function(outcome, covar = NULL, zeros = NULL, ali, data, family, miss_method = "cc_prop", use_glm = TRUE, comp_sep = FALSE, folds = 5) {
   # Randomly assign folds
   data_folds = sample(
     x = rep(x = 1:folds, length.out = nrow(data)),
@@ -42,12 +43,14 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
           outcome = outcome,
           covar = covar,
           zeros = zeros,
+          ali = ali,
           data = train,
           family = family,
           use_glm = use_glm
         )
         test = calc_cc_prop_ali(
-          data = test
+          data = test, 
+          ali = ali
         )
       }
     } else if (miss_method == "num_miss") {
@@ -55,18 +58,21 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
         outcome = outcome,
         covar = covar,
         zeros = zeros,
+        ali = ali,
         data = train,
         family = family,
         use_glm = use_glm
       )
       test = calc_num_miss_ali(
-        data = test
+        data = test, 
+        ali = ali
       )
     } else if (miss_method %in% c("best", "worst")) {
       train_res = case_approach(
         outcome = outcome,
         covar = covar,
         zeros = zeros,
+        ali = ali,
         data = train,
         family = family,
         best = miss_method == "best",
@@ -75,6 +81,7 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
       )
       test = calc_case_ali(
         data = test,
+        ali = ali,
         best = miss_method == "best",
         comp_sep = FALSE
       )
@@ -84,12 +91,14 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
           outcome = outcome,
           covar = covar,
           zeros = zeros,
+          ali = ali,
           data = train,
           family = family,
           use_glm = use_glm
         )
         test = make_all_miss_factor(
-          data = test
+          data = test, 
+          ali = ali
         )
       } else {
         warning("The missingness as a category approach can only be used with the separate components model. Please set \\code{comp_sep = TRUE} and try again.")
@@ -100,6 +109,7 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
           outcome = outcome,
           covar = covar,
           zeros = zeros,
+          ali = ali,
           data = train,
           family = family,
           use_glm = use_glm
@@ -114,6 +124,7 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, data, family, mis
     if(miss_method == "patsub") { #### Bespoke function for pattern submodels
       pred_test = predict_pattern_submod(
         submod_res = train_res,
+        ali = ali,
         newdata = test)
     } else {
       if (use_glm) { #### Probs for logistic, counts for Poisson

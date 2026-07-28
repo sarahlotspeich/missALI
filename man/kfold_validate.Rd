@@ -8,6 +8,7 @@ kfold_validate(
   outcome,
   covar = NULL,
   zeros = NULL,
+  ali,
   data,
   family,
   miss_method = "cc_prop",
@@ -23,11 +24,13 @@ kfold_validate(
 
 \item{zeros}{optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.}
 
+\item{ali}{vector of names for the columns containing the ALI components.}
+
 \item{data}{dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.}
 
 \item{family}{description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.}
 
-\item{miss_method}{missing data method. Default is \code{miss_method = "cc_prop"}; other options include \code{"num_miss"}, \code{"best"} case scenario, \code{"worst"} case scenario, and missingness categories (\code{"cat"}).}
+\item{miss_method}{missing data method. Default is \code{miss_method = "cc_prop"}; other options include \code{"num_miss"}, \code{"best"} case scenario, \code{"worst"} case scenario, missingness categories (\code{"cat"}), and pattern submodels (\code{"patsub"}).}
 
 \item{use_glm}{logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.}
 

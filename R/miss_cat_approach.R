@@ -3,6 +3,7 @@
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the outcome model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
 #' @param zeros optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.
+#' @param ali vector of names for the columns containing the ALI components.
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
@@ -13,7 +14,7 @@
 #' @importFrom dplyr mutate
 #' @importFrom ranger ranger
 #' @importFrom pscl zeroinfl
-miss_cat_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE) {
+miss_cat_approach = function(outcome, covar = NULL, zeros = NULL, ali, data, family, use_glm = TRUE) {
   # Create indicator of whether zero-inflation is needed
   use_zeroinfl = !is.null(zeros)
 
@@ -23,21 +24,13 @@ miss_cat_approach = function(outcome, covar = NULL, zeros = NULL, data, family, 
   }
 
   # Create factor versions of ALI components with missingness indicators
-  data = data |>
-    mutate(A1C_F = make_miss_factor(x = A1C),
-           ALB_F = make_miss_factor(x = ALB),
-           BMI_F = make_miss_factor(x = BMI),
-           CHOL_F = make_miss_factor(x = CHOL),
-           CRP_F = make_miss_factor(x = CRP),
-           CREAT_C_F = make_miss_factor(x = CREAT_C),
-           HCST_F = make_miss_factor(x = HCST),
-           TRIG_F = make_miss_factor(x = TRIG),
-           BP_DIASTOLIC_F = make_miss_factor(x = BP_DIASTOLIC),
-           BP_SYSTOLIC_F = make_miss_factor(x = BP_SYSTOLIC))
+  data <- data |>
+    mutate(across(all_of(ali),
+                  .fns = ~ make_miss_factor(x = .),
+                  .names = "{.col}_F"))
 
   # Define vector of factor component names
-  factor_ALI_comp = c("A1C_F", "ALB_F", "BMI_F", "CHOL_F", "CRP_F",
-                      "CREAT_C_F", "HCST_F", "TRIG_F", "BP_DIASTOLIC_F","BP_SYSTOLIC_F")
+  factor_ALI_comp <- paste0(ali, "_F")
 
   # Fit the model of interest
   if (use_glm) { ## Using a generalized linear model (GLM)

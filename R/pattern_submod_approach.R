@@ -3,6 +3,7 @@
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the outcome model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
 #' @param zeros optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.
+#' @param ali vector of names for the columns containing the ALI components.
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
@@ -13,7 +14,7 @@
 #' @import dplyr
 #' @importFrom ranger ranger
 #' @importFrom pscl zeroinfl
-pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE) {
+pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, ali, data, family, use_glm = TRUE) {
   # Create indicator of whether zero-inflation is needed
   use_zeroinfl = !is.null(zeros)
 
@@ -24,9 +25,13 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, data, fa
 
   # Create missingness indicators for each component
   data = data |>
-    mutate(across(A1C:BP_SYSTOLIC,
-                  .fns = ~ if_else(is.na(.), 1, 0),
-                  .names = "MISS_{.col}"))
+    mutate(
+      across(
+        all_of(ali),
+        .fns = ~ if_else(is.na(.), 1, 0),
+        .names = "MISS_{.col}"
+        )
+      )
 
   # Define missing data patterns
   all_miss_pat = data |>

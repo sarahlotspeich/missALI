@@ -3,6 +3,7 @@
 #' @param outcome name of the outcome of the model (like \code{outcome = "disease"}).
 #' @param covar optional, vector of names for covariates of the model (like \code{covar = c("sex", "age")}). Default is \code{covar = NULL} (no additional covariates).
 #' @param zeros optional, vector of names for covariates of the zero-inflation model (like \code{zeros = c("sex", "age")}). Default is \code{zeros = NULL} (no zero inflation). If zero inflation with only an intercept in the model is requested, use \code{zeros = "intercept"}.
+#' @param ali vector of names for the columns containing the ALI components.
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
@@ -14,7 +15,7 @@
 #' @importFrom tidyr gather
 #' @importFrom ranger ranger
 #' @importFrom pscl zeroinfl
-cc_prop_approach = function(outcome, covar = NULL, zeros = NULL, data, family, use_glm = TRUE) {
+cc_prop_approach = function(outcome, covar = NULL, zeros = NULL, ali, data, family, use_glm = TRUE) {
   # Create indicator of whether zero-inflation is needed
   use_zeroinfl = !is.null(zeros)
 
@@ -23,13 +24,9 @@ cc_prop_approach = function(outcome, covar = NULL, zeros = NULL, data, family, u
     zeros = c("1")
   }
 
-  # Define vector of binary component names
-  bin_ALI_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
-                   "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
-
   # Summarize by patient and count numbers unhealthy and missing
   sum_data = data |>
-    select(PAT_MRN_ID, all_of(bin_ALI_comp)) |>
+    select(PAT_MRN_ID, all_of(ali)) |>
     gather(key = "COMP", value = "VAL", -1) |>
     group_by(PAT_MRN_ID, .inform = FALSE) |>
     summarize(PROP_UNHEALTHY = mean(VAL == 1, na.rm = TRUE))
