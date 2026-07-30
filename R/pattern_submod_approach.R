@@ -42,7 +42,7 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, ali, dat
     mutate(miss_pat = paste0("MP-", 1:n()))
 
   ## Define number of predictors
-  p = 10 + length(covar)
+  p = length(ali) + length(covar)
   
   ## Create indicator of being "big enough" for each pattern at 2p + 2 threshold
   all_miss_pat = all_miss_pat |>
@@ -102,7 +102,7 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, ali, dat
       }
     } else {
       ## Subset to complete cases based on nonmiss_comp (Mercaldo and Blume's CCS)
-      cc_nonmiss_comp = data[complete.cases(data[, nonmiss_comp]), c("ANY_ADMIT", "NUM_ADMIT", "AGE_AT_ENCOUNTER", "SEX", nonmiss_comp)]
+      cc_nonmiss_comp = data[complete.cases(data[, nonmiss_comp]), c(outcome, covar, nonmiss_comp)]
       if (nrow(cc_nonmiss_comp) >= (2 * (length(nonmiss_comp) + length(covar)) + 2)) { ### check whether we have big enough sample for CCS
         if (use_glm) { ## Using a generalized linear model (GLM)
           if (use_zeroinfl) {
@@ -140,7 +140,7 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, ali, dat
                                                       value = TRUE))
         parent_nonmiss_comp = nonmiss_comp_list[[parent_index]]
         ## Subset to complete cases based on parent model's nonmiss_comp
-        cc_parent_nonmiss_comp = data[complete.cases(data[, parent_nonmiss_comp]), c("ANY_ADMIT", "NUM_ADMIT", "AGE_AT_ENCOUNTER", "SEX", parent_nonmiss_comp)]
+        cc_parent_nonmiss_comp = data[complete.cases(data[, parent_nonmiss_comp]), c(outcome, covar, parent_nonmiss_comp)]
         try_to_refit = FALSE #nrow(cc_parent_nonmiss_comp) >= (2 * (length(parent_nonmiss_comp) + length(covar)) + 2)
         if (try_to_refit) {
           ### If we have enough complete cases from the parent nonmiss_comp, re-estimate
