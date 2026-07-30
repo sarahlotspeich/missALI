@@ -128,6 +128,13 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, ali, dat
             submod_list[[m]] = NULL
           }
         }
+        message(
+          paste(
+            "Missing pattern", all_miss_pat$miss_pat[m], 
+            "(only", paste0(nonmiss_comp_list[[m]], collapse = ","), 
+            "observed) was too small and fit via complete-case submodel"
+          )
+        )
       } else { ## If not, take fitted submodel from parent missing data pattern
         ## Look up which large, stable parent model index this tiny pattern belongs to
         ### Find the parent pattern that contains the same missing values 
