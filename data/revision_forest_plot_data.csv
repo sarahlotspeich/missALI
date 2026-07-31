@@ -1,0 +1,31 @@
+"Model","Missing","Separate_Components","Fit","AUC"
+"Logistic","Complete-Case Proportion","Summary Measure","Full-Sample",0.623294219904389
+"Logistic","Complete-Case Proportion","Summary Measure","K-Fold",0.608097784568373
+"Logistic","Counts of Unhealthy and Missing Components","Summary Measure","Full-Sample",0.6281761552948
+"Logistic","Counts of Unhealthy and Missing Components","Summary Measure","K-Fold",0.606951871657754
+"Logistic","Best Case Imputation","Summary Measure","Full-Sample",0.615833695494712
+"Logistic","Best Case Imputation","Summary Measure","K-Fold",0.599121466768526
+"Logistic","Worst Case Imputation","Summary Measure","Full-Sample",0.627900912646676
+"Logistic","Worst Case Imputation","Summary Measure","K-Fold",0.599312452253628
+"Logistic","Best Case Imputation","Separate Components","Full-Sample",0.645219469795742
+"Logistic","Best Case Imputation","Separate Components","K-Fold",0.60676088617265
+"Logistic","Worst Case Imputation","Separate Components","Full-Sample",0.665355642474286
+"Logistic","Worst Case Imputation","Separate Components","K-Fold",0.62987012987013
+"Logistic","Missingness as a Category","Separate Components","Full-Sample",0.683804143126177
+"Logistic","Pattern Submodels","Separate Components","Full-Sample",0.721700709836303
+"Logistic","Pattern Submodels","Separate Components","K-Fold",0.595075757575758
+"Random Forest","Complete-Case Proportion","Summary Measure","Full-Sample",0.539924670433144
+"Random Forest","Complete-Case Proportion","Summary Measure","K-Fold",0.501170568561873
+"Random Forest","Counts of Unhealthy and Missing Components","Summary Measure","Full-Sample",0.554411125597565
+"Random Forest","Counts of Unhealthy and Missing Components","Summary Measure","K-Fold",0.571896551724139
+"Random Forest","Best Case Imputation","Summary Measure","Full-Sample",0.563667970447632
+"Random Forest","Best Case Imputation","Summary Measure","K-Fold",0.563216195569137
+"Random Forest","Worst Case Imputation","Summary Measure","Full-Sample",0.443821526872375
+"Random Forest","Worst Case Imputation","Summary Measure","K-Fold",0.560535117056857
+"Random Forest","Best Case Imputation","Separate Components","Full-Sample",0.594132985658409
+"Random Forest","Best Case Imputation","Separate Components","K-Fold",0.626623376623377
+"Random Forest","Worst Case Imputation","Separate Components","Full-Sample",0.603462262784297
+"Random Forest","Worst Case Imputation","Separate Components","K-Fold",0.653170359052712
+"Random Forest","Missingness as a Category","Separate Components","Full-Sample",0.602651021295089
+"Random Forest","Pattern Submodels","Separate Components","Full-Sample",0.673707083876576
+"Random Forest","Pattern Submodels","Separate Components","K-Fold",0.54905303030303
