@@ -83,7 +83,7 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, ali, data, family
         data = test,
         ali = ali,
         best = miss_method == "best",
-        comp_sep = FALSE
+        comp_sep = comp_sep
       )
     } else if (miss_method == "cat") {
       if (comp_sep) {
