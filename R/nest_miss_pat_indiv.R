@@ -21,10 +21,10 @@ nest_miss_pat_indiv = function(child_pat, all_miss_pat, miss_cols) {
       
       # Condition 1: Candidate missing must be a true subset of the child's
       # (All variables missing in the child must also be missing in the parent)
-      if (all(candidate_missing %in% child_missing)) {
+      if (all(child_missing %in% candidate_missing)) {
         
         # Condition 2: Calculate distance (how many extra variables are dropped)
-        dropped_difference = length(child_missing) - length(candidate_missing)
+        dropped_difference = length(candidate_missing) - length(child_missing)
         
         # Keep the candidate that drops the fewest variables
         if (dropped_difference < min_dropped_vars) {
