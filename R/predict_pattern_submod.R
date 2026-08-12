@@ -10,7 +10,13 @@ predict_pattern_submod = function(submod_res, ali, newdata = NULL) {
   if (is.null(newdata)) {
     # Make a copy of data (to subset from)
     pred_data = submod_res$data
+    
+    # Save original row order
+    pred_data$ROW_NUM = 1:nrow(pred_data)
   } else {
+    # Save original row order
+    newdata$ROW_NUM = 1:nrow(newdata)
+    
     # Create missingness indicators for each component
     newdata = newdata |>
       mutate(across(all_of(ali),
@@ -65,9 +71,6 @@ predict_pattern_submod = function(submod_res, ali, newdata = NULL) {
     # Make a copy of newdata (to subset from)
     pred_data = newdata
   }
-  ## Save original rownumbers (to ensure returned in same order)
-  pred_data$ROW_NUM = 1:nrow(pred_data)
-
   # Loop over missing data patterns
   for (mp in unique(pred_data$miss_pat)) {
     ## Subset to observations in that pattern
