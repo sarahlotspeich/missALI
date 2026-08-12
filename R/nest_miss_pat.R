@@ -37,8 +37,16 @@
   }
   
   # Absolute Safety Net: If an orphan pattern doesn't nest anywhere, default to MP-1
+  # if (is.null(best_parent_idx)) {
+  #   best_parent_idx = 1
+  # }
   if (is.null(best_parent_idx)) {
-    best_parent_idx = 1
+    stop(
+      paste(
+        "No valid stable parent found for",
+        all_miss_pat$miss_pat[child_index]
+      )
+    )
   }
   
   return(best_parent_idx)
