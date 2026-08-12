@@ -54,7 +54,10 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, ali, dat
               by = grep(pattern = "MISS",
                         x = colnames(data),
                         ignore.case = FALSE,
-                        value = TRUE))
+                        value = TRUE)) |> 
+    ### Initialize complete_case_submodel, nested = FALSE 
+    mutate(complete_case_submodel = FALSE, 
+           nested = FALSE)  
 
   # Fit the (sub)model(s) of interest
   submod_list = list()
@@ -128,6 +131,8 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, ali, dat
             submod_list[[m]] = NULL
           }
         }
+        ## Flip complete_case_submodel to TRUE 
+        data$complete_case_submodel[data$miss_pat == all_miss_pat$miss_pat[m]] = TRUE
         message(
           paste(
             "Missing pattern", all_miss_pat$miss_pat[m], 
@@ -145,40 +150,10 @@ pattern_submod_approach = function(outcome, covar = NULL, zeros = NULL, ali, dat
                                                       x = colnames(data),
                                                       ignore.case = FALSE,
                                                       value = TRUE))
-        parent_nonmiss_comp = nonmiss_comp_list[[parent_index]]
-        ## Subset to complete cases based on parent model's nonmiss_comp
-        cc_parent_nonmiss_comp = data[complete.cases(data[, parent_nonmiss_comp]), c(outcome, covar, parent_nonmiss_comp)]
-        try_to_refit = FALSE #nrow(cc_parent_nonmiss_comp) >= (2 * (length(parent_nonmiss_comp) + length(covar)) + 2)
-        if (try_to_refit) {
-          ### If we have enough complete cases from the parent nonmiss_comp, re-estimate
-          if (use_glm) { ## Using a generalized linear model (GLM)
-            if (use_zeroinfl) {
-              submod_list[[m]] = zeroinfl(formula = as.formula(paste(outcome, "~", paste(c(parent_nonmiss_comp, covar), collapse = "+"),  "|", paste(zeros, collapse = "+"))),
-                                          dist = family,
-                                          data = cc_parent_nonmiss_comp)
-            } else {
-              submod_list[[m]] = glm(formula = as.formula(paste(outcome, "~", paste(c(parent_nonmiss_comp, covar), collapse = "+"))),
-                                     family = family,
-                                     data = cc_parent_nonmiss_comp)
-            }
-          } else { ## Using a random forest
-            if (family == "binomial") {
-              submod_list[[m]] = ranger(
-                formula = as.formula(paste(outcome, "~", paste(c(parent_nonmiss_comp, covar), collapse = "+"))),
-                data = cc_parent_nonmiss_comp,
-                num.trees = 500,
-                mtry = 2,
-                importance = "permutation",
-                probability = TRUE # For classification, to get class probabilities
-              )
-            } else {
-              submod_list[[m]] = NULL
-            }
-          }
-        } else {
-          ### Otherwise, take the parent pattern's fitted model "as-is"
-          submod_list[[m]] = submod_list[[parent_index]]
-        }
+        ## Take the parent pattern's fitted model "as-is"
+        submod_list[[m]] = submod_list[[parent_index]]
+        ## Flip nested to TRUE 
+        data$nested[data$miss_pat == all_miss_pat$miss_pat[m]] = TRUE
         message(
           paste(
             "Missing pattern", all_miss_pat$miss_pat[m], 
