@@ -37,11 +37,21 @@ kfold_calibration = function(kfold_validate_res, plot_folds = 1,
   slope_per_fold     = sapply(cal_per_fold, function(x) x$calibration_slope)
   ## Take median calibration slope/intercept if plotting >1 fold
   if (length(plot_folds) > 1) {
-    label_cal = paste0("Intercept = ", round(median(intercept_per_fold), 3),
-                       "\nSlope = ", round(median(slope_per_fold), 3))
+    label_cal = paste0(
+      "atop(bold('Median Calibration'), atop('Intercept = ", 
+      round(median(intercept_per_fold), 3), 
+      "', 'Slope = ", 
+      round(median(slope_per_fold), 3), 
+      "'))"
+    )
   } else {
-    label_cal = paste0("Intercept = ", round(intercept_per_fold, 3),
-                       "\nSlope = ", round(slope_per_fold, 3))
+    label_cal = paste0(
+      "atop(bold('Calibration'), atop('Intercept = ", 
+      round(intercept_per_fold, 3), 
+      "', 'Slope = ", 
+      round(slope_per_fold, 3), 
+      "'))"
+    )
   }
   
   ## Build decile-level points/lines per fold (analogous to each fold's ROC curve)
