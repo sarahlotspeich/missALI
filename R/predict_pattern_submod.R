@@ -26,9 +26,16 @@ predict_pattern_submod = function(submod_res, ali, newdata = NULL) {
     # Take missing data patterns defined for training data
     train_miss_pat = submod_res$data |>
       arrange(desc(n)) |>
-      select(starts_with("MISS", ignore.case = FALSE), n, miss_pat, big_enough) |>
+      select(
+        starts_with("MISS", ignore.case = FALSE),
+        n,
+        miss_pat,
+        big_enough,
+        nested,
+        complete_case_submodel
+      ) |>
       unique()
-
+    
     # Define the missingness indicators' column names
     miss_ind_cols = grep(pattern = "MISS", 
                          x = colnames(newdata), 
@@ -38,8 +45,7 @@ predict_pattern_submod = function(submod_res, ali, newdata = NULL) {
     ## Merge missing data pattern IDs back into patient data (to define subgroups)
     newdata = newdata |>
       left_join(y = train_miss_pat,
-                by = miss_ind_cols) |> 
-      mutate(nested = FALSE)
+                by = miss_ind_cols)
     
     ## Check for missing data patterns in test data but not train data
     if (any(is.na(newdata$miss_pat))) {
@@ -61,6 +67,8 @@ predict_pattern_submod = function(submod_res, ali, newdata = NULL) {
       
       ### Create indicator of being nested 
       nest_newdata$nested = TRUE
+      ### And set indicator of complete-case submodel to FALSE 
+      nest_newdata$complete_case_submodel = FALSE
       
       ### Combine back with the rest of newdata
       newdata = newdata |> 
@@ -102,6 +110,6 @@ predict_pattern_submod = function(submod_res, ali, newdata = NULL) {
   # Put data back into original order
   pred_data = pred_data[order(pred_data$ROW_NUM), ]
 
-  ## And then return just a vector of predictions
-  return(pred_data$PRED)
+  ## And then return prediction data in original row order
+  return(pred_data)
 }

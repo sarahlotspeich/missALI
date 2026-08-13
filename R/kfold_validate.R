@@ -122,10 +122,12 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, ali, data, family
     }
     ### Calculate predictions using trained model x test data
     if(miss_method == "patsub") { #### Bespoke function for pattern submodels
-      pred_test = predict_pattern_submod(
+      pred_test_res = predict_pattern_submod(
         submod_res = train_res,
         ali = ali,
-        newdata = test)
+        newdata = test
+      )
+      pred_test = pred_test_res$PRED
     } else {
       if (use_glm) { #### Probs for logistic, counts for Poisson
           pred_test = predict(
@@ -152,9 +154,14 @@ kfold_validate = function(outcome, covar = NULL, zeros = NULL, ali, data, family
     kfold_auc[k] = auc_test ##### save it to vector
 
     ### Save all results from this fold to list (to be returned)
+    if(miss_method == "patsub") {
+      return_test_data = pred_test_res
+    } else {
+      return_test_data = test
+    }
     kfold_all[[k]] = list(
       train_data = train,
-      test_data = test,
+      test_data = return_test_data,
       train_fit = train_res,
       test_pred = pred_test,
       test_roc = roc_test,
