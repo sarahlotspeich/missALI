@@ -11,7 +11,11 @@ pattern_submod_approach(
   ali,
   data,
   family,
-  use_glm = TRUE
+  use_glm = TRUE,
+  rf_mtry = NULL,
+  rf_min_node_size = NULL,
+  rf_splitrule = "gini",
+  rf_num_trees = 500
 )
 }
 \arguments{
@@ -28,6 +32,14 @@ pattern_submod_approach(
 \item{family}{description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.}
 
 \item{use_glm}{logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.}
+
+\item{rf_mtry}{optional (only if \code{use_glm = FALSE}), number of predictor variables randomly selected as candidates at each split in the random forest. Default is \code{rf_mtry = NULL}, which uses the \code{ranger()} default of the square root of the number of predictors (rounded down).}
+
+\item{rf_min_node_size}{optional (only if \code{use_glm = FALSE}), minimum node size at which a node can be split in the random forest. Default is \code{rf_min_node_size = NULL}, which uses the \code{ranger()} default (10 for probability forests).}
+
+\item{rf_splitrule}{optional (only if \code{use_glm = FALSE}), splitting rule used in the random forest. Default is \code{rf_splitrule = "gini"}; other options for probability forests include \code{"extratrees"} and \code{"hellinger"}.}
+
+\item{rf_num_trees}{optional (only if \code{use_glm = FALSE}), number of trees to grow in the random forest. Default is \code{rf_num_trees = 500}.}
 }
 \value{
 \item{data}{dataframe with the factor versions of the ALI components (with an added column identifying the missing data pattern).}

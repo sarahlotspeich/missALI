@@ -7,6 +7,10 @@
 #' @param data dataframe containing at least the variables included in \code{outcome}, \code{covar}, and the binary ALI components.
 #' @param family description of the error distribution and link function to be used in the model, to be passed to \code{glm()}.
 #' @param use_glm logical argument for whether a generalized linear model (GLM) should be used (\code{use_glm = TRUE}, the default). Otherwise, a random forest is used.
+#' @param rf_mtry optional (only if \code{use_glm = FALSE}), number of predictor variables randomly selected as candidates at each split in the random forest. Default is \code{rf_mtry = NULL}, which uses the \code{ranger()} default of the square root of the number of predictors (rounded down).
+#' @param rf_min_node_size optional (only if \code{use_glm = FALSE}), minimum node size at which a node can be split in the random forest. Default is \code{rf_min_node_size = NULL}, which uses the \code{ranger()} default (10 for probability forests).
+#' @param rf_splitrule optional (only if \code{use_glm = FALSE}), splitting rule used in the random forest. Default is \code{rf_splitrule = "gini"}; other options for probability forests include \code{"extratrees"} and \code{"hellinger"}.
+#' @param rf_num_trees optional (only if \code{use_glm = FALSE}), number of trees to grow in the random forest. Default is \code{rf_num_trees = 500}.
 #' @return
 #' \item{data}{dataframe with proportion of unhealthy among nonmissing ALI components.}
 #' \item{fit}{fitted regression model object.}
@@ -15,7 +19,8 @@
 #' @importFrom tidyr gather
 #' @importFrom ranger ranger
 #' @importFrom pscl zeroinfl
-cc_prop_approach = function(outcome, covar = NULL, zeros = NULL, ali, data, family, use_glm = TRUE) {
+cc_prop_approach = function(outcome, covar = NULL, zeros = NULL, ali, data, family, use_glm = TRUE, rf_mtry = NULL, rf_min_node_size = NULL, rf_splitrule = "gini", rf_num_trees = 500) {
+  
   # Create indicator of whether zero-inflation is needed
   use_zeroinfl = !is.null(zeros)
 
@@ -52,8 +57,10 @@ cc_prop_approach = function(outcome, covar = NULL, zeros = NULL, ali, data, fami
         formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", covar),
                                                         collapse = "+"))),
         data = data,
-        num.trees = 500,
-        mtry = 2,
+        num.trees = rf_num_trees,
+        mtry = rf_mtry,
+        min.node.size = rf_min_node_size,
+        splitrule = rf_splitrule,
         importance = "permutation",
         probability = TRUE # For classification, to get class probabilities
       )
