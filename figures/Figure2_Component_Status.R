@@ -58,7 +58,7 @@ fig2 = long_ali |>
       )
       stringr::str_wrap(clean_names[x], width = 10)
     }) +
-  labs(x = "ALI Component",
+  labs(x = "Allostatic Load Index Component",
        y = "Proportion of Measurements") +
   theme_minimal(base_size = 24) +
   theme(axis.title = element_text(face = "bold"),
