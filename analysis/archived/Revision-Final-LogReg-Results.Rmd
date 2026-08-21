@@ -25,7 +25,7 @@ hosp_dat = read.csv("~/Documents/Allostatic_load_audits/revision_analysis_dat.cs
   filter(!is.na(ALI))
 
 # Define vector of binary ALI component column names
-ali_comp <- c("A1C", "ALB", "BMI", "CHOL", "CRP",
+ali_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
               "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
 ```
 
@@ -91,17 +91,17 @@ miss_meth_cols = c("#2b9d8f", "#e76f51", "#1b3c73", "#c1dbd0",
 source("~/Documents/missALI/analysis/calibration_functions.R")
 source("~/Documents/missALI/analysis/summ_plot_predictions.R")
 ## For full-sample 
-summ_plot_fit <- function(mod, col, method_title, model_type, missing, separate_components, B = 10000) {
+summ_plot_fit = function(mod, col, method_title, model_type, missing, separate_components, B = 10000) {
   
   if (missing == "Pattern Submodels") {
     
-    pred_prob <- mod |>
+    pred_prob = mod |>
       predict_pattern_submod() |>
       pull(PRED)
     
   } else {
     
-    pred_prob <- predict(
+    pred_prob = predict(
       mod$fit,
       type = "response"
     )
@@ -123,9 +123,9 @@ summ_plot_fit <- function(mod, col, method_title, model_type, missing, separate_
   )
 }
 ## For K-fold cross-validated
-summ_plot_fit_kfold_pooled <- function(kfold_res, col, method_title, model_type, missing, separate_components, B = 10000, xlim = c(0, 1), ylim = c(0, 1)) {
+summ_plot_fit_kfold_pooled = function(kfold_res, col, method_title, model_type, missing, separate_components, B = 10000, xlim = c(0, 1), ylim = c(0, 1)) {
   ### Pool out-of-sample predictions across all folds
-  cv_dat <- do.call(
+  cv_dat = do.call(
     rbind,
     lapply(
       kfold_res$all_fold_res,
@@ -157,7 +157,7 @@ summ_plot_fit_kfold_pooled <- function(kfold_res, col, method_title, model_type,
 
 ## Summary Measure Models
 ### Approach 1: Proportion of Non-Missing Components That Are Unhealthy 
-### Fit to Full Sample 
+#### Fit to Full Sample 
 
 ```{r cc-prop full sample}
 # Logistic regression + complete-case proportion
@@ -194,7 +194,7 @@ out$cal_table |>
 save_auc = out$df
 ```
 
-### 5-Fold Cross-Validated 
+#### 5-Fold Cross-Validated 
 
 ```{r cc-prop k-fold}
 # Make fold assignment reproducible (same for all models + approaches)
@@ -237,7 +237,7 @@ save_auc = save_auc |>
 
 ### Approach 2: Counts of Unhealthy and Missing Components 
 
-### Fit to Full Sample 
+#### Fit to Full Sample 
 
 ```{r counts full sample}
 # Logistic regression + count of missing / unhealthy
@@ -275,7 +275,7 @@ save_auc = save_auc |>
   dplyr::bind_rows(out$df)
 ```
 
-### 5-Fold Cross-Validated 
+#### 5-Fold Cross-Validated 
 
 ```{r counts k-fold}
 # Make fold assignment reproducible (same for all models + approaches)
@@ -318,7 +318,7 @@ save_auc = save_auc |>
 
 ### Approach 3a: Best-Case Imputation
 
-### Fit to Full Sample 
+#### Fit to Full Sample 
 
 ```{r best case full sample}
 # Logistic regression + best-case imputation
@@ -357,7 +357,7 @@ save_auc = save_auc |>
   dplyr::bind_rows(out$df)
 ```
 
-### 5-Fold Cross-Validated 
+#### 5-Fold Cross-Validated 
 
 ```{r best case k-fold}
 # Make fold assignment reproducible (same for all models + approaches)
@@ -400,7 +400,7 @@ save_auc = save_auc |>
 
 ### Approach 3b: Worst-Case Imputation
 
-### Fit to Full Sample 
+#### Fit to Full Sample 
 
 ```{r worst case full sample}
 # Logistic regression + worst-case imputation
@@ -439,7 +439,7 @@ save_auc = save_auc |>
   dplyr::bind_rows(out$df)
 ```
 
-### 5-Fold Cross-Validated 
+#### 5-Fold Cross-Validated 
 
 ```{r worst case k-fold}
 # Make fold assignment reproducible (same for all models + approaches)
@@ -506,11 +506,11 @@ ggsave(filename = "~/Documents/missALI/figures/revision_all_summ_meas_cal_log.pn
        device = "png", width = 16, height = 10, units = "in")
 ```
 
-### Separate Component Models
+## Separate Component Models
 
 ### Approach 4a: Best-Case Case Imputation (Separate)
 
-### Fit to Full Sample 
+#### Fit to Full Sample 
 
 ```{r best case (sep) full sample}
 # Logistic regression + best-case imputation (separate components)
@@ -550,7 +550,7 @@ save_auc = save_auc |>
   dplyr::bind_rows(out$df)
 ```
 
-### 5-Fold Cross-Validated 
+#### 5-Fold Cross-Validated 
 
 ```{r best case (sep) k-fold}
 # Make fold assignment reproducible (same for all models + approaches)
@@ -594,7 +594,7 @@ save_auc = save_auc |>
 
 ### Approach 4b: Worst-Case Case Imputation (Separate)
 
-### Fit to Full Sample 
+#### Fit to Full Sample 
 
 ```{r worst case (sep) full sample}
 # Logistic regression + worst-case imputation (separate components)
@@ -634,7 +634,7 @@ save_auc = save_auc |>
   dplyr::bind_rows(out$df)
 ```
 
-### 5-Fold Cross-Validated 
+#### 5-Fold Cross-Validated 
 
 ```{r worst case (sep) k-fold}
 # Make fold assignment reproducible (same for all models + approaches)
@@ -671,14 +671,15 @@ cal_log_worst_sep_k = out_kfold$cal
 out_kfold$cal_table |>
   write.csv("~/Documents/missALI/analysis/detailed_calibration_results/logistic_regression/cross_validated/worst_case_separate.csv", row.names = FALSE)
 
-# Save AUC to dataframe 
+# Save AUC to dataframe
+out_kfold$df
 save_auc = save_auc |> 
   dplyr::bind_rows(out_kfold$df)
 ```
 
 ### Approach 5: Missingness as a Category (Separate)
 
-### Fit to Full Sample
+#### Fit to Full Sample
 
 ```{r miss cat full sample}
 # Logistic regression + missing as a category (separate components)
@@ -718,7 +719,7 @@ save_auc = save_auc |>
 
 ### Approach 6: Pattern Submodels (Separate)
 
-### Fit to Full Sample
+#### Fit to Full Sample
 
 ```{r pattern submodels full sample}
 # Logistic regression + pattern submodels (separate components)
@@ -755,7 +756,7 @@ save_auc = save_auc |>
   dplyr::bind_rows(out$df)
 ```
 
-### 5-Fold Cross-Validated 
+#### 5-Fold Cross-Validated 
 
 ```{r pattern submodels k-fold}
 # Make fold assignment reproducible (same for all models + approaches)
@@ -773,8 +774,7 @@ kfold_log_submod_sep = kfold_validate(outcome = "ANY_ADMIT",
 # Count how many patients had missing data patterns that needed CCS or nesting
 kfold_test_dat = lapply(
   kfold_log_submod_sep$all_fold_res,
-  function(x) x$test_data
-) |>
+  function(x) x$test_data) |>
   dplyr::bind_rows()
 table(kfold_test_dat$complete_case_submodel) ## complete-case submodel
 table(kfold_test_dat$nested) ## nested 
@@ -815,11 +815,11 @@ save_auc |>
 The following plot displays the ROC curves for the three separate component models side-by-side. 
 
 ```{r, echo = FALSE, fig.width = 16, fig.height = 10}
-design <- "
+design = "
 ABCD
 EF#G
 "
-comb_plot <- (roc_log_best + roc_log_worst + roc_log_cat + roc_log_submod +
+comb_plot = (roc_log_best + roc_log_worst + roc_log_cat + roc_log_submod +
               roc_log_best_k + roc_log_worst_k + roc_log_submod_k) +
   plot_layout(design = design)
 comb_plot
@@ -833,7 +833,7 @@ ggsave(filename = "~/Documents/missALI/figures/revision_all_sep_comp_roc_log.png
 The following plot displays the calibration plots for the four separate component models side-by-side. 
 
 ```{r, echo = FALSE, fig.width = 16, fig.height = 10}
-comb_plot <- (cal_log_best + cal_log_worst + cal_log_cat + cal_log_submod +
+comb_plot = (cal_log_best + cal_log_worst + cal_log_cat + cal_log_submod +
               cal_log_best_k + cal_log_worst_k + cal_log_submod_k) +
   plot_layout(design = design)
 comb_plot
