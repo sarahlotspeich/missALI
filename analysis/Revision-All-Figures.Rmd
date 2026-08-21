@@ -1,0 +1,124 @@
+---
+title: "Figures and Tables (Revision)"
+author: "Sarah Lotspeich"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Setup 
+
+```{r, message = FALSE, warning = FALSE}
+# Load packages
+library(missALI) ## for models x missing data corrections 
+library(pROC) ## for ROC curves and AUC 
+library(predtools) ## for calibration plots
+library(ggplot2) ## for plots (in general)
+library(patchwork) ## for multi-panel plots 
+library(naniar) ## for upset plots of missing data patterns
+
+# Read in data on hospitalizations (suppressed for privacy)
+#hosp_dat = read.csv("~/Documents/missALI/data/deidentified_ali_hospitalizations.csv")
+hosp_dat = read.csv("~/Documents/Allostatic_load_audits/revision_analysis_dat.csv") |> 
+  ## Exclude one person with no vitals/labs before hospitalization day so all components missing
+  filter(!is.na(ALI))
+
+# Define vector of binary ALI component column names
+ali_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
+              "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
+```
+
+## Exclusions 
+
+  - Patients whose first primary care encounters were not at least 90 days before the end of the study period. 
+  - For patients who were hospitalized, only visits and labs before their hospitalization (at least 1 day but no more than 3 years) were included in the averages used for ALI components. 
+  - One patient (who was hospitalized) only had vitals and labs on their day of hospitalization, so they were missing all 10 components and had to be excluded. 
+  - Altogether, these exclusions left us with $n=$ `r nrow(hosp_dat)` patients' data. 
+
+# Exploratory Data Analysis {.tabset}
+
+## Table 2
+##### Summary of demographic characteristics and numeric allostatic load index (ALI) component measurements for the $1000$ patients sampled from the electronic health records (EHR) at Atrium Health Wake Forest Baptist Hospital. Numeric variables are reported as median (quartile 1, quartile 3) and categorical variables as count ($\%$). Missingness is shown as count ($\%$).
+
+```{r}
+# Demographics
+quantile(hosp_dat$AGE_AT_ENCOUNTER) ## age
+table(hosp_dat$SEX) ## biological sex
+# ALI components 
+hosp_dat |> 
+  select(PAT_MRN_ID, all_of(paste0(ali_comp, "_NUM"))) |> 
+  pivot_longer(cols = paste0(ali_comp, "_NUM"), names_to = "COMP", values_to = "NUM") |> 
+  group_by(COMP) |> 
+  summarize(med = median(NUM, na.rm = TRUE), 
+            q1 = quantile(NUM, 0.25, na.rm = TRUE), 
+            q3 = quantile(NUM, 0.75, na.rm = TRUE), 
+            num_miss = sum(is.na(NUM)), 
+            prop_miss = round(mean(is.na(NUM)) * 100)) |> 
+  mutate_at(-1, round, digits = 1)
+# Clinical follow-up 
+hosp_dat |> 
+  rename(
+    TOTAL_FOLLOWUP = EARLIEST_TO_LATEST_CONTACT, 
+    AHWFB_FOLLOWUP = FIRST_VISIT_TO_LATEST_CONTACT, 
+    NUM_ENCOUNTERS = NUM_CONTACTS
+  ) |> 
+  select(PAT_MRN_ID, TOTAL_FOLLOWUP, AHWFB_FOLLOWUP, NUM_ENCOUNTERS) |> 
+  pivot_longer(cols = -1, names_to = "TYPE", values_to = "NUM") |> 
+  group_by(TYPE) |> 
+  summarize(med = median(NUM, na.rm = TRUE), 
+            q1 = quantile(NUM, 0.25, na.rm = TRUE), 
+            q3 = quantile(NUM, 0.75, na.rm = TRUE), 
+            num_miss = sum(is.na(NUM)), 
+            prop_miss = round(mean(is.na(NUM)) * 100)) |> 
+  mutate_at(-1, round, digits = 1)
+table(hosp_dat$ANY_ADMIT) ## hospitalized at AHWFB
+```
+
+## Figure 2
+##### Patterns of missingness in the $10$ allostatic load index (ALI) for the $n = 707$ patients in the sample from the electronic health records (EHR) at Atrium Health Wake Forest Baptist Hospital. Each row represents one of the $16$ distinct missing data patterns, and within that row the ALI component(s) with an ``X'' were missing.
+
+```{r fig1, include = FALSE}
+source("~/Documents/missALI/figures/Figure1_Missing_Data_Patterns.R")
+fig1
+```
+
+## Supplemental Figure S1
+##### Distributions of the allostatic load index (ALI) for the $n = 707$ patients in the sample from the electronic health records (EHR) at Atrium Health Wake Forest Baptist Hospital after using the complete-case proportion and best/worst case imputation missing data methods. 
+
+```{r figS1, echo = FALSE, message = FALSE, warning = FALSE}
+source("~/Documents/missALI/figures/FigureS1_Boxplot_Proportion_ALIs.R")
+figS1
+ali_box_dat |> 
+  dplyr::select(-PAT_MRN_ID) |> 
+  summarize_all(median)
+```
+
+## Supplemental Figure S2
+##### Distributions of the allostatic load index (ALI) for the $n = 707$ patients in the sample from the electronic health records (EHR) at Atrium Health Wake Forest Baptist Hospital after using the complete-case proportion and best/worst case imputation missing data methods.
+
+```{r figS2, echo = FALSE, message = FALSE, warning = FALSE}
+source("~/Documents/missALI/figures/FigureS2_Boxplot_Count_ALIs.R")
+figS2
+ali_box_dat |> 
+  dplyr::select(-PAT_MRN_ID) |> 
+  summarize_all(median)
+```
+
+## Figure 2
+##### Proportion of $n = 707$ patients in the sample from the electronic health records (EHR) at Atrium Health Wake Forest Baptist Hospital with healthy, unhealthy, and missing values across the $10$ allostatic load index (ALI) components, after discretizing the original numeric biomarkers at their clinically meaningful thresholds from Table 1.
+
+```{r fig2, echo = FALSE, message = FALSE, warning = FALSE}
+source("~/Documents/missALI/figures/Figure2_Component_Status.R")
+fig2
+```
+
+## Figure 3
+##### Missingness upset plot displaying combinations of allostatic load index (ALI) components that were missing together for patients.
+
+```{r fig3, echo = FALSE, message = FALSE, warning = FALSE, include = FALSE}
+source("~/Documents/missALI/figures/Figure3_Upset.R")
+fig3
+```
