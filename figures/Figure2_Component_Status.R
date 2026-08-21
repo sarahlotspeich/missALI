@@ -43,22 +43,24 @@ fig2 = long_ali |>
                     name = NULL) +
   scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
   scale_x_discrete(
-    labels = c(
-      BP_SYSTOLIC = "BP Systolic",
-      BP_DIASTOLIC = "BP Diastolic",
-      BMI = "Body Mass Index",
-      ALB = "Serum Albumin",
-      TRIG = "Triglycerides",
-      CHOL = "Cholesterol",
-      A1C = "Hemoglobin A1C",
-      HCST = "Homocysteine",
-      CRP = "C-Reactive Protein",
-      CREAT_C = "Creatinine Clearance"
-    )
-  )  +
+    labels = function(x) {
+      clean_names = c(
+        BP_SYSTOLIC  = "SBP", #"BP Systolic",
+        BP_DIASTOLIC = "DBP", #"BP Diastolic",
+        BMI          = "BMI", #"Body Mass Index",
+        ALB          = "ALB", #"Serum Albumin",
+        TRIG         = "TRIG", #"Triglycerides",
+        CHOL         = "CHOL", #"Cholesterol",
+        A1C          = "HBA1C", #"Hemoglobin A1C",
+        HCST         = "HCST", #"Homocysteine",
+        CRP          = "CRP", #"C-Reactive Protein",
+        CREAT_C      = "CREAT" #"Creatinine Clearance"
+      )
+      stringr::str_wrap(clean_names[x], width = 10)
+    }) +
   labs(x = "ALI Component",
        y = "Proportion of Measurements") +
-  theme_minimal(base_size = 14) +
+  theme_minimal(base_size = 24) +
   theme(axis.title = element_text(face = "bold"),
         legend.position = "top",
         panel.grid.major.y = element_blank(),
