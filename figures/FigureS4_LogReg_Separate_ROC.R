@@ -1,0 +1,30 @@
+# Setup data and helper functions
+source("~/Documents/missALI/analysis/setup_for_logistic_regression_fit.R")
+
+# Set working directory
+setwd("~/Documents/missALI/")
+
+# Source fitted models and extract their ROC curves 
+## Best-case imputation (separate)
+full_best = readRDS("analysis/fitted_models/logistic_regression/full_best_case_separate.rds")
+kfold_best = readRDS("analysis/fitted_models/logistic_regression/kfold_best_case_separate.rds")
+## Worst-case imputation (separate)
+full_worst = readRDS("analysis/fitted_models/logistic_regression/full_worst_case_separate.rds")
+kfold_worst = readRDS("analysis/fitted_models/logistic_regression/kfold_worst_case_separate.rds")
+## Missingness categories 
+full_miss_cat = readRDS("analysis/fitted_models/logistic_regression/full_missing_category.rds")
+## Pattern submodels 
+full_pat_sub = readRDS("analysis/fitted_models/logistic_regression/full_pattern_submodels.rds")
+kfold_pat_sub = readRDS("analysis/fitted_models/logistic_regression/kfold_pattern_submodels.rds")
+# ROC curves for Approaches 4-6
+## Create custom design since missingness categories doesn't have k-fold
+design = "
+ABCD
+EF#G
+"
+comb_plot = (full_best$roc + full_worst$roc + full_miss_cat$roc + full_pat_sub$roc +
+               kfold_best$roc + kfold_worst$roc + kfold_pat_sub$roc) +
+  plot_layout(design = design)
+ggsave(filename = "~/Documents/missALI/figures/revision_all_sep_comp_roc_log.png", 
+       plot = comb_plot, 
+       device = "png", width = 16, height = 10, units = "in")
