@@ -1,11 +1,13 @@
-full_sample_roc = function(roc_obj, line_col, method_title) {
-  ## Create label AUC = 0.XXX
+full_sample_roc = function(roc_obj, line_col, method_title, B = 10000) {
+  ## Calculate 95% CI for AUC (bootstrapped)
+  auc_ci = ci.auc(roc_obj,
+                  method = "bootstrap",
+                  boot.n = B) |>
+    as.numeric()
+  ## Create label AUC = 0.XX (95% CI)
   label_auc = paste0("= ", sprintf("%.2f", round(auc(roc_obj), 2)), " (", 
-                     sprintf("%.2f", round(ci.auc(roc_obj)[1], 2)), ", ", 
-                     sprintf("%.2f", round(ci.auc(roc_obj)[2], 2)), ")")
-  
-  ## Make dataframe of ROC coordinates to plot
-  #plot_roc_df = coords(roc_obj)
+                     sprintf("%.2f", round(auc_ci[1], 2)), ", ", 
+                     sprintf("%.2f", round(auc_ci[2], 2)), ")")
   
   ## Plot ROC curve(s) using ggplot2
   roc_obj |>
@@ -19,6 +21,7 @@ full_sample_roc = function(roc_obj, line_col, method_title) {
     ### Final formatting
     theme_minimal(base_size = 14) +
     coord_equal() +
+    ### Annotation of AUC (95% CI)
     annotate(geom = "text",
              x = 1,
              y = 0.07,
