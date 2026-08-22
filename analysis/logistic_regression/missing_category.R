@@ -2,6 +2,8 @@
 source("~/Documents/missALI/analysis/setup_for_logistic_regression_fit.R")
 
 # Logistic regression + worst-case imputation (separate)
+## Make bootstrap SEs reproducible
+set.seed(918)
 ## Full sample
 mod_log_cat = miss_cat_approach(outcome = "ANY_ADMIT",
                                 covar = c("SEX", "AGE_AT_ENCOUNTER"),

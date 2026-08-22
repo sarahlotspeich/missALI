@@ -2,6 +2,8 @@
 source("~/Documents/missALI/analysis/setup_for_logistic_regression_fit.R")
 
 # Logistic regression + counts of missing and unhealthy
+## Make bootstrap SEs reproducible
+set.seed(918)
 ## Full sample
 mod_log_num = num_miss_approach(outcome = "ANY_ADMIT", 
                                 covar = c("SEX", "AGE_AT_ENCOUNTER"), 
@@ -21,7 +23,7 @@ saveRDS(object = out,
         file = "~/Documents/missALI/analysis/fitted_models/logistic_regression/full_counts_missing_unhealthy.rds")
 
 # 5-Fold Cross-Validated 
-## Make fold assignment reproducible (same for all models + approaches)
+## Make fold assignment and bootstrap SEs reproducible (same for all models + approaches)
 set.seed(918)
 ## Fit models
 kfold_log_num_miss = kfold_validate(outcome = "ANY_ADMIT", 

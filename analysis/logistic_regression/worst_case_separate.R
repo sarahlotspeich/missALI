@@ -2,6 +2,8 @@
 source("~/Documents/missALI/analysis/setup_for_logistic_regression_fit.R")
 
 # Logistic regression + worst-case imputation (separate)
+## Make bootstrap SEs reproducible
+set.seed(918)
 ## Full sample
 mod_log_worst = case_approach(outcome = "ANY_ADMIT", 
                               covar = c("SEX", "AGE_AT_ENCOUNTER"), 
@@ -23,7 +25,7 @@ saveRDS(object = out,
         file = "~/Documents/missALI/analysis/fitted_models/logistic_regression/full_worst_case_separate.rds")
 
 # 5-Fold Cross-Validated 
-## Make fold assignment reproducible (same for all models + approaches)
+## Make fold assignment and bootstrap SEs reproducible (same for all models + approaches)
 set.seed(918)
 ## Fit models
 kfold_log_worst_sep = kfold_validate(outcome = "ANY_ADMIT", 
