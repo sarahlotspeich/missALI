@@ -2,8 +2,6 @@
 source("~/Documents/missALI/analysis/setup_for_logistic_regression_fit.R")
 
 # Logistic regression + counts of missing and unhealthy
-## Make bootstrap SEs reproducible
-set.seed(918)
 ## Full sample
 mod_log_num = num_miss_approach(outcome = "ANY_ADMIT", 
                                 covar = c("SEX", "AGE_AT_ENCOUNTER"), 
@@ -12,7 +10,7 @@ mod_log_num = num_miss_approach(outcome = "ANY_ADMIT",
                                 family = "binomial") 
 
 # Create plots and calculate metrics 
-out = summ_plot_fit(
+out = summ_plot_fit_glm(
   mod = mod_log_num, 
   col = "#e76f51", 
   method_title = "Counts of Unhealthy and\nMissing Components", 

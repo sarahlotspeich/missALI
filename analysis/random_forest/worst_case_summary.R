@@ -2,7 +2,7 @@
 source("~/Documents/missALI/analysis/setup_for_random_forest_fit.R")
 
 # Random forest + worst-case imputation (summary)
-## Make bootstrap SEs reproducible (same for all models + approaches)
+## Make random forest reproducible
 set.seed(918)
 ## Full sample
 mod_log_worst = case_approach(outcome = "ANY_ADMIT", 
@@ -14,7 +14,7 @@ mod_log_worst = case_approach(outcome = "ANY_ADMIT",
                               use_glm = FALSE) 
 
 # Create plots and calculate metrics 
-out = summ_plot_fit(
+out = summ_plot_fit_rf(
   mod = mod_log_worst, 
   col = "#c1dbd0", 
   method_title = "Worst Case\nImputation", 

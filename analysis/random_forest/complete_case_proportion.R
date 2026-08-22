@@ -2,7 +2,7 @@
 source("~/Documents/missALI/analysis/setup_for_random_forest_fit.R")
 
 # Random forest + complete-case proportion
-## Make bootstrap SEs reproducible (same for all models + approaches)
+## Make random forest reproducible
 set.seed(918)
 ## Full sample
 mod_log_prop = cc_prop_approach(outcome = "ANY_ADMIT", 

@@ -2,7 +2,7 @@
 source("~/Documents/missALI/analysis/setup_for_random_forest_fit.R")
 
 # Random forest + worst-case imputation (separate)
-## Make bootstrap SEs reproducible (same for all models + approaches)
+## Make random forest reproducible
 set.seed(918)
 ## Full sample
 mod_log_patsub = pattern_submod_approach(outcome = "ANY_ADMIT",
@@ -16,7 +16,7 @@ table(mod_log_patsub$data$complete_case_submodel) ### complete-case submodel
 table(mod_log_patsub$data$nested) ### nested 
 
 # Create plots and calculate metrics 
-out = summ_plot_fit(
+out = summ_plot_fit_rf(
   mod = mod_log_patsub, 
   col = "#c0404a", 
   method_title = "Pattern\nSubmodels", 

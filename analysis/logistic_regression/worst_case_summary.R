@@ -2,8 +2,6 @@
 source("~/Documents/missALI/analysis/setup_for_logistic_regression_fit.R")
 
 # Logistic regression + worst-case imputation (summary)
-## Make bootstrap SEs reproducible
-set.seed(918)
 ## Full sample
 mod_log_worst = case_approach(outcome = "ANY_ADMIT", 
                               covar = c("SEX", "AGE_AT_ENCOUNTER"), 
@@ -13,7 +11,7 @@ mod_log_worst = case_approach(outcome = "ANY_ADMIT",
                               best = FALSE) 
 
 # Create plots and calculate metrics 
-out = summ_plot_fit(
+out = summ_plot_fit_glm(
   mod = mod_log_worst, 
   col = "#c1dbd0", 
   method_title = "Worst Case\nImputation", 

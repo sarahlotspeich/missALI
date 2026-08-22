@@ -2,8 +2,6 @@
 source("~/Documents/missALI/analysis/setup_for_logistic_regression_fit.R")
 
 # Logistic regression + worst-case imputation (separate)
-## Make bootstrap SEs reproducible
-set.seed(918)
 ## Full sample
 mod_log_patsub = pattern_submod_approach(outcome = "ANY_ADMIT",
                                          covar = c("SEX", "AGE_AT_ENCOUNTER"),
@@ -16,7 +14,7 @@ table(mod_log_patsub$data$complete_case_submodel) ### complete-case submodel
 table(mod_log_patsub$data$nested) ### nested 
 
 # Create plots and calculate metrics 
-out = summ_plot_fit(
+out = summ_plot_fit_glm(
   mod = mod_log_patsub, 
   col = "#c0404a", 
   method_title = "Pattern\nSubmodels", 
