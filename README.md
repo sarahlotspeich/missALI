@@ -1,6 +1,7 @@
-`missALI`: Overcoming missing data to predict hospitalization from the
-ALI
+Prediction Modeling from an EHR-Derived Allostatic Load Index with
+Informatively Missing Biomarkers: A Case Study
 ================
+Weavil, Rigdon, and Lotspeich (2026+)
 
 ## Installation
 
@@ -18,635 +19,134 @@ devtools::install_github(repo = "sarahlotspeich/missALI")
 library(missALI)
 ```
 
-## Functionality
-
-Using the dataset `hosp_dat` for illustration, the `missALI` package
-contains functions to fit prediction models with…
-
-- **Two types of outcome:** binary (logistic regression, random forest
-  classifier) or count (Poisson regression, zero-inflated Poisson
-  regression),
-- **Two types of ALI components:** binary (healthy/unhealthy) or
-  numeric, and
-- **Five approaches to handle missing components:** missingness
-  indicators (only for binary ALI components),
-
-Example code for each of these options follows.
-
-## Summary of Non-Missing ALI Components
-
-``` r
-hosp_dat |> 
-  dplyr::select(NUM_A1C:NUM_BP_SYSTOLIC) |> 
-  tidyr::pivot_longer(cols = NUM_A1C:NUM_BP_SYSTOLIC, values_to = "val", names_to = "comp") |> 
-  dplyr::group_by(comp) |> 
-  dplyr::summarize(
-    med = median(val, na.rm = TRUE), 
-    q1 = quantile(val, probs = 0.25, na.rm = TRUE), 
-    q3 = quantile(val, probs = 0.75, na.rm = TRUE)
-  ) |> 
-  dplyr::mutate(
-    num_summ = paste0("$", round(med, 2), "$ $(", round(q1, 2), "-", round(q3, 2), ")$")
-  )
-```
-
-    ## # A tibble: 10 × 5
-    ##    comp                med    q1     q3 num_summ                  
-    ##    <chr>             <dbl> <dbl>  <dbl> <chr>                     
-    ##  1 NUM_A1C            5.73   5.3   6.68 $5.73$ $(5.3-6.68)$       
-    ##  2 NUM_ALB            4.3    4.1   4.5  $4.3$ $(4.1-4.5)$         
-    ##  3 NUM_BMI           29.2   25.5  34.6  $29.18$ $(25.52-34.56)$   
-    ##  4 NUM_BP_DIASTOLIC  77.0   71.4  82.1  $77.04$ $(71.44-82.13)$   
-    ##  5 NUM_BP_SYSTOLIC  125.   117.  135.   $125.06$ $(117.24-134.77)$
-    ##  6 NUM_CHOL         183    161.  208    $183$ $(160.69-208)$      
-    ##  7 NUM_CREAT_C      194.   176.  213.   $194.35$ $(175.52-213.18)$
-    ##  8 NUM_CRP            2.8    0.8  38.4  $2.8$ $(0.8-38.45)$       
-    ##  9 NUM_HCST          10.1    8.5  12.8  $10.1$ $(8.5-12.8)$       
-    ## 10 NUM_TRIG         117     84.5 174.   $117$ $(84.5-173.54)$
-
-## Modeling Different Types of Outcomes
-
-### Binary Outcomes
-
-Our binary outcome is called `ANY_ADMIT` and can be summarized by the
-following count frequency table.
-
-``` r
-# Binary outcome: Any hospitalization (yes/no)
-table(hosp_dat$ANY_ADMIT)
-```
-
-    ## 
-    ##   0   1 
-    ## 783 217
-
-In the `missALI` package, there are functions for the various missing
-data approaches. Each of these functions can handle *either* a binary or
-count outcome. The user simply specifies which type of model they want
-through the `family` argument, as they would with the built-in `glm()`
-function in R.
-
-For a binary outcome, we let `family = "binomial"` in all of the
-situations that follow.
-
-### Count Outcomes
-
-Our binary outcome is called `NUM_ADMIT` and can be summarized by the
-following count frequency table:
-
-``` r
-# Count outcome: Number of hospitalizations (0, 1, 2,...)
-## Count frequency table
-table(hosp_dat$NUM_ADMIT)
-```
-
-    ## 
-    ##   0   1   2   3   4   5   6   7   8   9  12  13  14 
-    ## 783 132  42  18  12   3   1   1   3   2   1   1   1
-
-``` r
-## And 6-number summary
-summary(hosp_dat$NUM_ADMIT)
-```
-
-    ##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-    ##   0.000   0.000   0.000   0.427   0.000  14.000
-
-In the `missALI` package, there are functions for the various missing
-data approaches. Each of these functions can handle *either* a binary or
-count outcome. The user simply specifies which type of model they want
-through the `family` argument, as they would with the built-in `glm()`
-function in R.
-
-For a count outcome, we let `family = "poisson"` in all of the
-situations that follow.
-
-#### Zero Inflation
-
-If you suspect that your count outcome may exhibit zero inflation,
-specify which variables you think that the zero inflation depends upon
-using the `zeros` argument in the functions that follow. If you suspect
-zero inflation but that it does not depend on any additional variables,
-set `zeros = "intercept"`.
-
-## Using Different Missing Data Approaches
-
-Each of the following missing data approaches is demonstrated for the
-binary outcome, but can be applied with count outcomes instead by
-replacing the `outcome` and `family` arguments as outlined above. We
-primarily considered *summary measure* approaches, which sought to
-preserve the single-number summary interpretation of the original ALI.
-However, we also considered a few models where using the **separate
-components** and handling missingness in them individually.
-
-### Summary Measure Models
-
-#### Approach 1: Proportion of Non-Missing Components That Are Unhealthy
-
-Another way to adapt the original ALI definition is to convert it from a
-count of unhealthy components to the *percent* of them. Then, we can
-calculate each patient’s ALI as the proportion out of only their
-nonmissing components (i.e., their complete case proportion of unhealthy
-measurements). This approach effectively ignores the missing components
-per patient; they do not count positively or negatively toward their
-whole-person health.
-
-``` r
-# Calculate ALI as the proportion of nonmissing components that are unhealthy
-## and fit a model with each component separately as predictors (+ other covariates)
-mod_log_prop = cc_prop_approach(outcome = "ANY_ADMIT", 
-                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                                data = hosp_dat, 
-                                family = "binomial") 
-
-# View the fitted model summary
-mod_log_prop$fit |> 
-  summary()
-```
-
-    ## 
-    ## Call:
-    ## glm(formula = as.formula(paste(outcome, "~ ", paste(c("PROP_UNHEALTHY", 
-    ##     covar), collapse = "+"))), family = family, data = data)
-    ## 
-    ## Coefficients:
-    ##                   Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)      -3.090065   0.331319  -9.327  < 2e-16 ***
-    ## PROP_UNHEALTHY    1.473894   0.381619   3.862 0.000112 ***
-    ## SEXMale          -0.010915   0.160326  -0.068 0.945724    
-    ## AGE_AT_ENCOUNTER  0.026815   0.006338   4.231 2.33e-05 ***
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-    ## 
-    ## (Dispersion parameter for binomial family taken to be 1)
-    ## 
-    ##     Null deviance: 1046.2  on 999  degrees of freedom
-    ## Residual deviance: 1001.8  on 996  degrees of freedom
-    ## AIC: 1009.8
-    ## 
-    ## Number of Fisher Scoring iterations: 4
-
-#### Approach 2: Counts of Unhealthy and Missing Components
-
-The original definition of the ALI (from Seeman et al.) was actually the
-count of unhealthy components, taking of values from 0 to 10. When we
-have missingness, however, this count alone can be misleading; it
-inherently treats all missing values as 0s (meaning healthy). However,
-we could try to include the count of unhealthy components *and* the
-count of missing components, where the latter could be interpreted as
-the sum of missingness indicators per person.
-
-``` r
-# Replace missing ALI components with "healthy" (the best case scenario)
-## and fit a model with each component separately as predictors (+ other covariates)
-mod_log_num = num_miss_approach(outcome = "ANY_ADMIT", 
-                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                                data = hosp_dat, 
-                                family = "binomial") 
-
-# View the fitted model summary
-mod_log_num$fit |> 
-  summary()
-```
-
-    ## 
-    ## Call:
-    ## glm(formula = as.formula(paste(outcome, "~", paste(c("NUM_UNHEALTHY", 
-    ##     "NUM_MISSING", covar), collapse = "+"))), family = family, 
-    ##     data = data)
-    ## 
-    ## Coefficients:
-    ##                   Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)      -3.160464   0.581547  -5.435 5.49e-08 ***
-    ## NUM_UNHEALTHY     0.216141   0.066397   3.255  0.00113 ** 
-    ## NUM_MISSING       0.033942   0.075659   0.449  0.65370    
-    ## SEXMale          -0.010301   0.160259  -0.064  0.94875    
-    ## AGE_AT_ENCOUNTER  0.026544   0.006789   3.910 9.25e-05 ***
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-    ## 
-    ## (Dispersion parameter for binomial family taken to be 1)
-    ## 
-    ##     Null deviance: 1046.2  on 999  degrees of freedom
-    ## Residual deviance: 1004.6  on 995  degrees of freedom
-    ## AIC: 1014.6
-    ## 
-    ## Number of Fisher Scoring iterations: 4
-
-#### Approach 3: Best/Worst Case Imputation
-
-For each of the 10 ALI components, we can assume that the missing values
-would have been healthy (for the best case scenario) or unhealthy (for
-the worst case scenario). Then, we re-calculate the ALI as the number of
-unhealthy components (post-imputation) divided by 10.
-
-``` r
-# Replace missing ALI components with "healthy" (the best case scenario)
-## and fit a model with each component separately as predictors (+ other covariates)
-mod_log_best = case_approach(outcome = "ANY_ADMIT", 
-                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                             data = hosp_dat, 
-                             family = "binomial", 
-                             best = TRUE) 
-
-# View the fitted model summary
-mod_log_best$fit |> 
-  summary()
-```
-
-    ## 
-    ## Call:
-    ## glm(formula = as.formula(paste(outcome, "~ CASE_ALI +", paste(covar, 
-    ##     collapse = "+"))), family = family, data = data)
-    ## 
-    ## Coefficients:
-    ##                   Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)      -2.944173   0.322137  -9.140  < 2e-16 ***
-    ## CASE_ALI          2.020370   0.584306   3.458 0.000545 ***
-    ## SEXMale          -0.011646   0.160219  -0.073 0.942054    
-    ## AGE_AT_ENCOUNTER  0.025585   0.006445   3.970  7.2e-05 ***
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-    ## 
-    ## (Dispersion parameter for binomial family taken to be 1)
-    ## 
-    ##     Null deviance: 1046.2  on 999  degrees of freedom
-    ## Residual deviance: 1004.8  on 996  degrees of freedom
-    ## AIC: 1012.8
-    ## 
-    ## Number of Fisher Scoring iterations: 4
-
-The code above fits the model for the “best” case scenario. To instead
-fit the model for the “worst” case scenario, rather than best, simply
-switch the last argument in the call to the `case_approach()` function
-to be `best = FALSE` instead.
-
-### Separate Component Models
-
-#### Approach 4: Best/Worst Case Imputation (Separate)
-
-For each of the 10 ALI components, we can assume that the missing values
-would have been healthy (for the best case scenario) or unhealthy (for
-the worst case scenario). Then, we fit the model using using the
-original 2-level categorical variables (unhealthy/healthy) for each of
-the 10 components, further controlling for age and sex. To fit the
-separate component model via best/worst case imputation, we can use the
-`case_approach()` function again, with all the same arguments as in
-**Approach 3**, except we add `comp_sep = TRUE`.
-
-``` r
-# Replace missing ALI components with "healthy" (the best case scenario)
-## and fit a model with each component separately as predictors (+ other covariates)
-mod_log_best_sep = case_approach(outcome = "ANY_ADMIT", 
-                                 covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                                 data = hosp_dat, 
-                                 family = "binomial", 
-                                 best = TRUE, 
-                                 comp_sep = TRUE) 
-
-# View the fitted model summary
-mod_log_best_sep$fit |> 
-  summary()
-```
-
-    ## 
-    ## Call:
-    ## glm(formula = as.formula(paste(outcome, "~", paste(c(bin_ALI_comp, 
-    ##     covar), collapse = "+"))), family = family, data = data)
-    ## 
-    ## Coefficients: (2 not defined because of singularities)
-    ##                    Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)       -3.290333   0.369422  -8.907  < 2e-16 ***
-    ## A1C                0.598931   0.219865   2.724  0.00645 ** 
-    ## ALB                0.877964   0.273537   3.210  0.00133 ** 
-    ## BMI                0.293468   0.167084   1.756  0.07902 .  
-    ## CHOL              -0.175123   0.192652  -0.909  0.36334    
-    ## CRP              -12.749636 376.543102  -0.034  0.97299    
-    ## CREAT_C                  NA         NA      NA       NA    
-    ## HCST                     NA         NA      NA       NA    
-    ## TRIG               0.097657   0.190009   0.514  0.60728    
-    ## BP_DIASTOLIC      -0.187244   0.359017  -0.522  0.60199    
-    ## BP_SYSTOLIC        0.101409   0.237351   0.427  0.66919    
-    ## SEXMale           -0.013035   0.164984  -0.079  0.93703    
-    ## AGE_AT_ENCOUNTER   0.021958   0.006735   3.260  0.00111 ** 
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-    ## 
-    ## (Dispersion parameter for binomial family taken to be 1)
-    ## 
-    ##     Null deviance: 1046.17  on 999  degrees of freedom
-    ## Residual deviance:  984.59  on 989  degrees of freedom
-    ## AIC: 1006.6
-    ## 
-    ## Number of Fisher Scoring iterations: 12
-
-#### Approach 5: Missingness as a Category (Separate)
-
-For each of the 10 ALI components, we can go from two levels
-(unhealthy/healthy) to three levels (unhealthy/healthy/missing). Then,
-we fit the model using a 3-level categorical variable for each of the 10
-components, further controlling for age and sex.
-
-``` r
-# Allow each ALI component to be either healthy, unhealthy, or missing
-## and fit a model with each component separately as predictors (+ other covariates)
-mod_log_cat = miss_cat_approach(outcome = "ANY_ADMIT",
-                                covar = c("SEX", "AGE_AT_ENCOUNTER"),
-                                data = hosp_dat,
-                                family = "binomial")
-
-# View the fitted model summary
-mod_log_cat$fit |>
-  summary()
-```
-
-    ## 
-    ## Call:
-    ## glm(formula = as.formula(paste(outcome, "~", paste(c(factor_ALI_comp[count_levels > 
-    ##     1], covar), collapse = "+"))), family = family, data = data)
-    ## 
-    ## Coefficients: (1 not defined because of singularities)
-    ##                           Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)             -1.628e+01  1.029e+03  -0.016 0.987378    
-    ## A1C_FUnhealthy           5.089e-01  2.402e-01   2.119 0.034121 *  
-    ## A1C_FMissing            -9.497e-02  1.919e-01  -0.495 0.620708    
-    ## ALB_FUnhealthy          -6.908e-01  6.510e-01  -1.061 0.288605    
-    ## ALB_FMissing            -2.459e+00  7.098e-01  -3.465 0.000531 ***
-    ## BMI_FUnhealthy           3.338e-01  1.729e-01   1.930 0.053563 .  
-    ## BMI_FMissing            -1.256e+01  1.026e+03  -0.012 0.990232    
-    ## CHOL_FUnhealthy         -2.138e-02  2.015e-01  -0.106 0.915473    
-    ## CHOL_FMissing            1.180e+00  2.634e-01   4.479 7.50e-06 ***
-    ## CRP_FUnhealthy          -1.545e+01  1.028e+03  -0.015 0.988009    
-    ## CRP_FMissing            -6.590e-01  9.567e-01  -0.689 0.490941    
-    ## CREAT_C_FMissing         1.490e+01  1.029e+03   0.014 0.988445    
-    ## HCST_FMissing           -3.109e-01  8.245e-01  -0.377 0.706151    
-    ## TRIG_FUnhealthy          2.615e-01  1.989e-01   1.315 0.188523    
-    ## TRIG_FMissing                   NA         NA      NA       NA    
-    ## BP_DIASTOLIC_FUnhealthy -2.931e-01  3.637e-01  -0.806 0.420331    
-    ## BP_SYSTOLIC_FUnhealthy   8.805e-02  2.404e-01   0.366 0.714186    
-    ## SEXMale                  3.622e-03  1.676e-01   0.022 0.982763    
-    ## AGE_AT_ENCOUNTER         3.014e-02  7.213e-03   4.179 2.93e-05 ***
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-    ## 
-    ## (Dispersion parameter for binomial family taken to be 1)
-    ## 
-    ##     Null deviance: 1046.17  on 999  degrees of freedom
-    ## Residual deviance:  954.24  on 982  degrees of freedom
-    ## AIC: 990.24
-    ## 
-    ## Number of Fisher Scoring iterations: 14
-
-## Prediction
-
-For all approaches except multiple imputation, predicted probabilities
-of hospitalization can be obtained using the usual `predict()` function
-for a `glm` object. For example, we can predict from the **logistic
-regression + best case imputation** model above as:
-
-``` r
-# Calculate predicted probabilities from logistic regression w/ best case imputation
-pred_prob_best = mod_log_best$fit |> 
-  predict(type = "response")
-## View the first few
-pred_prob_best |> 
-  head()
-```
-
-    ##         1         2         3         4         5         6 
-    ## 0.2514757 0.2730080 0.2389383 0.1332820 0.2457094 0.2580422
-
-``` r
-# Make the ROC curve 
-roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_prob_best)
-plot(roc_curve, 
-     col = "#CD0BBC", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
-```
-
-![](README_files/figure-gfm/unnamed-chunk-13-1.png)<!-- -->
-
-## Other Models/Classifiers
-
-### Poisson Model
-
-For a **Poisson regression** model, using `predict(type = "response")`
-will obtain the predicted *count* of hospitalizations for each patient.
-
-``` r
-# Replace missing ALI components with "healthy" (the best case scenario)
-## and fit a model with each component separately as predictors (+ other covariates)
-mod_pois_best = case_approach(outcome = "ANY_ADMIT", 
-                              covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                              data = hosp_dat, 
-                              family = "poisson",
-                              best = TRUE) 
-
-# Calculate predicted counts from Poisson regression w/ missingness indicator
-pred_count_best = mod_pois_best$fit |> 
-  predict(type = "response")
-## View the first few
-pred_count_best |> 
-  head()
-```
-
-    ##         1         2         3         4         5         6 
-    ## 0.2517278 0.2716508 0.2353560 0.1342981 0.2404682 0.2554566
-
-``` r
-# Make the ROC curve 
-roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_count_best)
-plot(roc_curve, 
-     col = "#CD0BBC", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
-```
-
-![](README_files/figure-gfm/unnamed-chunk-14-1.png)<!-- -->
-
-### Zero-Inflated Poisson Model
-
-Below, we demonstrate how the best-case imputation approach could be
-used with a zero-inflated Poisson outcome model for the count of
-hospitalizations. The zero inflation part of the model assumes that a
-patient’s probability of never being hospitalized (i.e., being a
-*structural zero*) depends on their imputed ALI, sex, and age (the same
-explanatory variables as in the outcome model).
-
-``` r
-# Replace missing ALI components with "healthy" (the best case scenario)
-mod_zip_best = case_approach(outcome = "ANY_ADMIT", 
-                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                             zeros = c("CASE_ALI", "SEX", "AGE_AT_ENCOUNTER"), 
-                             data = hosp_dat, 
-                             family = "poisson", 
-                             best = TRUE) 
-
-# View the fitted model summary
-mod_zip_best$fit |> 
-  summary()
-```
-
-    ## 
-    ## Call:
-    ## zeroinfl(formula = as.formula(paste(outcome, "~ CASE_ALI +", paste(covar, 
-    ##     collapse = "+"), "|", paste(zeros, collapse = "+"))), data = data, 
-    ##     dist = family)
-    ## 
-    ## Pearson residuals:
-    ##     Min      1Q  Median      3Q     Max 
-    ## -0.7144 -0.5054 -0.4107 -0.2958  3.0486 
-    ## 
-    ## Count model coefficients (poisson with log link):
-    ##                   Estimate Std. Error z value Pr(>|z|)    
-    ## (Intercept)      -2.813100   0.290096  -9.697  < 2e-16 ***
-    ## CASE_ALI          1.178952   0.523116   2.254  0.02421 *  
-    ## SEXMale          -0.036466   0.138899  -0.263  0.79291    
-    ## AGE_AT_ENCOUNTER  0.022048   0.005816   3.791  0.00015 ***
-    ## 
-    ## Zero-inflation model coefficients (binomial with logit link):
-    ##                   Estimate Std. Error z value Pr(>|z|)
-    ## (Intercept)       -18.6230    14.6329  -1.273    0.203
-    ## CASE_ALI         -173.9223   121.1428  -1.436    0.151
-    ## SEXMale           -13.4504    10.8575  -1.239    0.215
-    ## AGE_AT_ENCOUNTER    0.5288     0.4301   1.229    0.219
-    ## ---
-    ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1 
-    ## 
-    ## Number of iterations in BFGS optimization: 336 
-    ## Log-likelihood: -527.9 on 8 Df
-
-For a **zero-inflated Poisson regression** model, using
-`predict(type = "response")` will obtain the predicted *count* of
-hospitalizations for each patient.
-
-``` r
-# Calculate predicted counts from ZIP regression w/ best-case imputation
-pred_count_zip_best = mod_zip_best$fit |> 
-  predict()
-## View the first few
-pred_count_zip_best |> 
-  head()
-```
-
-    ##         1         2         3         4         5         6 
-    ## 0.2729254 0.2915958 0.2498931 0.1429050 0.2375017 0.2729326
-
-``` r
-# Make the ROC curve 
-roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_count_zip_best)
-plot(roc_curve, 
-     col = "turquoise", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
-```
-
-![](README_files/figure-gfm/unnamed-chunk-16-1.png)<!-- -->
-
-### Machine Learning
-
-If a **random forest** classifier is desired, rather than a logistic
-regression model, then set the `use_glm` argument to `FALSE`. For a
-binary outcome, we continue to let `family = "binomial"`.
-
-``` r
-# Make random forest reproducible
-set.seed(415)
-
-# Replace missing ALI components with "healthy" (the best case scenario)
-mod_rf_best = case_approach(outcome = "ANY_ADMIT", 
-                            covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                            data = hosp_dat, 
-                            family = "binomial", 
-                            use_glm = FALSE, 
-                            best = TRUE) 
-
-# View variable importance for the fitted model (instead of coefficients)
-mod_rf_best$fit$variable.importance
-```
-
-    ##         CASE_ALI              SEX AGE_AT_ENCOUNTER 
-    ##      0.013950085      0.002417677      0.013012130
-
-``` r
-# View the predicted probabilities of Y = 1 and Y = 0
-mod_rf_best$fit$predictions |> 
-  head()
-```
-
-    ##               1         0
-    ## [1,] 0.28477633 0.7152237
-    ## [2,] 0.26392265 0.7360774
-    ## [3,] 0.16662605 0.8333739
-    ## [4,] 0.08473186 0.9152681
-    ## [5,] 0.43570316 0.5642968
-    ## [6,] 0.30890172 0.6910983
-
-``` r
-# Make the ROC curve 
-roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, mod_rf_best$fit$predictions[, 1])
-plot(roc_curve, 
-     col = "darkolivegreen2", 
-     main = "ROC Curve", 
-     print.auc = TRUE)
-```
-
-![](README_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
-
-The resulting `mod_rf_best` contains two named slots.
-
-1.  If you call `mod_rf_best$data`, you get the `hosp_dat` object back
-    *but* with the missingness indicators applied to the 10 ALI
-    components. (The data used to fit the model.)
-2.  If you call `mod_rf_best$fit`, you get the `ranger` fitted model
-    object, which you can then use to extract information like
-    `$variable.importance` and `$predictions`.
-
-## Cross-Validation
-
-To get more realistic measures of accuracy, we can evaluate the models
-using $k$-fold cross validation. We chose to leave this up to the user
-and demonstrate how the functions discussed thus far can be used to
-conduct $k$-fold cross validation.
-
-``` r
-# 5-fold cross validation of the logistic regression model with best-case imputation
-kfold_log_best = kfold_validate(outcome = "ANY_ADMIT", 
-                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
-                                data = hosp_dat, 
-                                family = "binomial", 
-                                miss_method = "best", 
-                                folds = 5)
-
-## View AUC from 5 folds 
-kfold_log_best$all_fold_auc
-```
-
-    ## [1] 0.6221863 0.6410798 0.6253312 0.6310886 0.5959373
-
-``` r
-median(kfold_log_best$all_fold_auc) ### summarized by median
-```
-
-    ## [1] 0.6253312
-
-``` r
-## Extract ROC curve from first fold 
-kfold_log_best |> 
-  kfold_roc(plot_folds = 1, 
-            overlay_average = FALSE, 
-            color_by_fold = FALSE) 
-```
-
-![](README_files/figure-gfm/unnamed-chunk-18-1.png)<!-- -->
-
-``` r
-## Plot individual ROC curves from 5 folds with median over top 
-kfold_log_best |> 
-  kfold_roc(plot_folds = 1:5, 
-            overlay_average = TRUE, 
-            color_by_fold = FALSE) 
-```
-
-![](README_files/figure-gfm/unnamed-chunk-18-2.png)<!-- -->
+## Models
+
+### Logistic regression with…
+
+1.  [Complete-case
+    proportion](analysis/logistic_regression/complete_case_proportion.R)
+2.  [Counts of missing and unhealthy
+    components](analysis/logistic_regression/count_missing_unhealthy.R)
+3.  [Best-case imputation
+    (summary)](analysis/logistic_regression/best_case_summary.R)
+4.  [Worst-case imputation
+    (summary)](analysis/logistic_regression/worst_case_summary.R)
+5.  [Best-case imputation
+    (separate)](analysis/logistic_regression/best_case_separate.R)
+6.  [Worst-case imputation
+    (separate)](analysis/logistic_regression/worst_case_separate.R)
+7.  [Missingness as a
+    category](analysis/logistic_regression/missing_category.R)
+8.  [Pattern
+    submodels](analysis/logistic_regression/pattern_submodels.R)
+
+### Random forest with…
+
+1.  [Complete-case
+    proportion](analysis/random_forest/complete_case_proportion.R)
+2.  [Counts of missing and unhealthy
+    components](analysis/random_forest/count_missing_unhealthy.R)
+3.  [Best-case imputation
+    (summary)](analysis/random_forest/best_case_summary.R)
+4.  [Worst-case imputation
+    (summary)](analysis/random_forest/worst_case_summary.R)
+5.  [Best-case imputation
+    (separate)](analysis/random_forest/best_case_separate.R)
+6.  [Worst-case imputation
+    (separate)](analysis/random_forest/worst_case_separate.R)
+7.  [Missingness as a
+    category](analysis/random_forest/missing_category.R)
+8.  [Pattern submodels](analysis/random_forest/pattern_submodels.R)
+
+## Figures
+
+- [Figure 1.](figures/Figure1_Missing_Data_Patterns.R) Patterns of
+  missingness in the $10$ allostatic load index (ALI) for the $n = 707$
+  patients in the sample from the electronic health records (EHR) at
+  Atrium Health Wake Forest Baptist Hospital. Each row represents one of
+  the $16$ distinct missing data patterns, and within that row the ALI
+  component(s) with an “X” were missing.
+- [Figure 2](figures/Figure2_Component_Status.R) Proportion of $n = 707$
+  patients in the sample from the electronic health records (EHR) at
+  Atrium Health Wake Forest Baptist Hospital with healthy, unhealthy,
+  and missing values across the $10$ allostatic load index (ALI)
+  components, after discretizing the original numeric biomarkers at
+  their clinically meaningful thresholds from Table 1.
+- [Figure 3](figures/Figure3_Upset.R) Missingness upset plot displaying
+  combinations of allostatic load index (ALI) components that were
+  missing together for patients.
+- [Supplemental Figure S1](figures/FigureS1_Boxplot_Proportion_ALIs.R)
+  Distributions of the allostatic load index (ALI) for the $n = 707$
+  patients in the sample from the electronic health records (EHR) at
+  Atrium Health Wake Forest Baptist Hospital after using the
+  complete-case proportion and best/worst case imputation missing data
+  methods.
+- [Supplemental Figure S2](figures/FigureS2_Boxplot_Count_ALIs.R)
+  Distributions of the allostatic load index (ALI) for the $n = 707$
+  patients in the sample from the electronic health records (EHR) at
+  Atrium Health Wake Forest Baptist Hospital after using the
+  complete-case proportion and best/worst case imputation missing data
+  methods.
+- [Supplemental Figure
+  S3](figures/FigureS3_LogReg_Summary_ROC.R)Receiver operating
+  characteristic (ROC) curves for the four summary measure models using
+  logistic regression based on the full sample data (top row) and
+  $5$-fold cross-validation (bottom row). The area under the ROC curve
+  (AUC) and its $95\%$ confidence interval ($95\%$ CI) are included.
+- [Supplemental Figure
+  S4](figures/FigureS4_LogReg_Separate_ROC.R)Receiver operating
+  characteristic (ROC) curves for the four separate component models
+  using logistic regression based on the full sample data (top row) and
+  $5$-fold cross-validation (bottom row). The area under the ROC curve
+  (AUC) and its $95\%$ confidence interval ($95\%$ CI) are included. The
+  missingness as a category model could not be $5$-fold cross-validated
+  due to extremely rare categories, which would sometimes appear in the
+  test but not train data.
+- [Supplemental Figure
+  S5](figures/FigureS5_LogReg_Summary_Calibration.R)Calibration curves
+  for the four summary measure models using logistic regression based on
+  the full sample data (top row) and $5$-fold cross-validation (bottom
+  row). The calibration intercept and slope with their $95\%$ confidence
+  intervals ($95\%$ CIs) are included only for the cross-validated
+  models; for the full-sample ones, logistic regression is almost
+  guaranteed to appear perfectly calibrated when fit and evaluated on
+  the same data.
+- [Supplemental Figure
+  S6](figures/FigureS6_LogReg_Separate_Calibration.R)Calibration curves
+  for the four separate component models using logistic regression based
+  on the full sample data (top row) and $5$-fold cross-validation
+  (bottom row). The calibration intercept and slope with their $95\%$
+  confidence intervals ($95\%$ CIs) are included only for the
+  cross-validated models; for the full-sample ones, logistic regression
+  is almost guaranteed to appear perfectly calibrated when fit and
+  evaluated on the same data. The missingness as a category model could
+  not be $5$-fold cross-validated due to extremely rare categories,
+  which would sometimes appear in the test but not train data.
+- [Supplemental Figure S7](figures/FigureS7_RF_Summary_ROC.R) Receiver
+  operating characteristic (ROC) curves for the four separate component
+  models using random forest classification based on the full sample
+  data (top row) and $5$-fold cross-validation (bottom row). The area
+  under the ROC curve (AUC) and its $95\%$ confidence interval
+  ($95\%$ CI) are included. The missingness as a category model could
+  not be $5$-fold cross-validated due to extremely rare categories,
+  which would sometimes appear in the test but not train data.
+- [Supplemental Figure S8](figures/FigureS8_RF_Separate_ROC.R)Receiver
+  operating characteristic (ROC) curves for the four summary measure
+  models using random forest classification based on the full sample
+  data (top row) and $5$-fold cross-validation (bottom row). The area
+  under the ROC curve (AUC) and its $95\%$ confidence interval
+  ($95\%$ CI) are included.
+- [Supplemental Figure
+  S9](figures/FigureS9_RF_Summary_Calibration.R)Calibration curves for
+  the four summary measure models using random forest classification
+  based on the full sample data (top row) and $5$-fold cross-validation
+  (bottom row). The calibration intercept and slope with their $95\%$
+  confidence intervals ($95\%$ CIs) are included.
+- [Supplemental Figure S10](figures/FigureS10_RF_Separate_Calibration.R)
+  Calibration curves for the four separate component models using random
+  forest classification based on the full sample data (top row) and
+  $5$-fold cross-validation (bottom row). The calibration intercept and
+  slope with their $95\%$ confidence intervals ($95\%$ CIs) are
+  included. The missingness as a category model could not be $5$-fold
+  cross-validated due to extremely rare categories, which would
+  sometimes appear in the test but not train data.
