@@ -1,0 +1,340 @@
+---
+title: "`missALI`: Overcoming missing data to predict hospitalization from the ALI"
+output: github_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE)
+```
+
+## Installation
+
+Installation of the `missALI` package from GitHub requires the
+[`devtools`](https://www.r-project.org/nosvn/pandoc/devtools.html)
+package and can be done in the following way.
+
+```{r, eval = FALSE}
+# Install the package (run once) 
+devtools::install_github(repo = "sarahlotspeich/missALI")
+```
+```{r}
+# Load the package (run every time you want to use it) 
+library(missALI)
+```
+```{r, echo = FALSE}
+# Read in data on hospitalizations (suppressed for privacy)
+hosp_dat = read.csv("~/Documents/missALI_prediction/data/deidentified_ali_hospitalizations.csv")
+```
+
+## Functionality 
+
+Using the dataset `hosp_dat` for illustration, the `missALI` package contains functions to fit prediction models with...
+
+  - **Two types of outcome:** binary (logistic regression, random forest classifier) or count (Poisson regression, zero-inflated Poisson regression), 
+  - **Two types of ALI components:** binary (healthy/unhealthy) or numeric, and 
+  - **Five approaches to handle missing components:** missingness indicators (only for binary ALI components), 
+  
+Example code for each of these options follows. 
+
+## Summary of Non-Missing ALI Components 
+
+```{r}
+hosp_dat |> 
+  dplyr::select(NUM_A1C:NUM_BP_SYSTOLIC) |> 
+  tidyr::pivot_longer(cols = NUM_A1C:NUM_BP_SYSTOLIC, values_to = "val", names_to = "comp") |> 
+  dplyr::group_by(comp) |> 
+  dplyr::summarize(
+    med = median(val, na.rm = TRUE), 
+    q1 = quantile(val, probs = 0.25, na.rm = TRUE), 
+    q3 = quantile(val, probs = 0.75, na.rm = TRUE)
+  ) |> 
+  dplyr::mutate(
+    num_summ = paste0("$", round(med, 2), "$ $(", round(q1, 2), "-", round(q3, 2), ")$")
+  )
+```
+
+## Modeling Different Types of Outcomes 
+### Binary Outcomes 
+
+Our binary outcome is called `ANY_ADMIT` and can be summarized by the following count frequency table. 
+
+```{r}
+# Binary outcome: Any hospitalization (yes/no)
+table(hosp_dat$ANY_ADMIT)
+```
+
+In the `missALI` package, there are functions for the various missing data approaches. Each of these functions can handle *either* a binary or count outcome. The user simply specifies which type of model they want through the `family` argument, as they would with the built-in `glm()` function in R.  
+
+For a binary outcome, we let `family = "binomial"` in all of the situations that follow.
+
+### Count Outcomes
+
+Our binary outcome is called `NUM_ADMIT` and can be summarized by the following count frequency table: 
+
+```{r}
+# Count outcome: Number of hospitalizations (0, 1, 2,...)
+## Count frequency table
+table(hosp_dat$NUM_ADMIT)
+```
+
+```{r}
+## And 6-number summary
+summary(hosp_dat$NUM_ADMIT)
+```
+
+In the `missALI` package, there are functions for the various missing data approaches. Each of these functions can handle *either* a binary or count outcome. The user simply specifies which type of model they want through the `family` argument, as they would with the built-in `glm()` function in R. 
+
+For a count outcome, we let `family = "poisson"` in all of the situations that follow.
+
+#### Zero Inflation 
+
+If you suspect that your count outcome may exhibit zero inflation, specify which variables you think that the zero inflation depends upon using the `zeros` argument in the functions that follow. If you suspect zero inflation but that it does not depend on any additional variables, set `zeros = "intercept"`. 
+
+## Using Different Missing Data Approaches
+
+Each of the following missing data approaches is demonstrated for the binary outcome, but can be applied with count outcomes instead by replacing the `outcome` and `family` arguments as outlined above. We primarily considered *summary measure* approaches, which sought to preserve the single-number summary interpretation of the original ALI. However, we also considered a few models where using the **separate components** and handling missingness in them individually. 
+
+### Summary Measure Models 
+#### Approach 1: Proportion of Non-Missing Components That Are Unhealthy 
+
+Another way to adapt the original ALI definition is to convert it from a count of unhealthy components to the *percent* of them. Then, we can calculate each patient's ALI as the proportion out of only their nonmissing components (i.e., their complete case proportion of unhealthy measurements). This approach effectively ignores the missing components per patient; they do not count positively or negatively toward their whole-person health. 
+
+```{r}
+# Calculate ALI as the proportion of nonmissing components that are unhealthy
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_prop = cc_prop_approach(outcome = "ANY_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "binomial") 
+
+# View the fitted model summary
+mod_log_prop$fit |> 
+  summary()
+```
+
+#### Approach 2: Counts of Unhealthy and Missing Components 
+
+The original definition of the ALI (from Seeman et al.) was actually the count of unhealthy components, taking of values from 0 to 10. When we have missingness, however, this count alone can be misleading; it inherently treats all missing values as 0s (meaning healthy). However, we could try to include the count of unhealthy components *and* the count of missing components, where the latter could be interpreted as the sum of missingness indicators per person. 
+
+```{r}
+# Replace missing ALI components with "healthy" (the best case scenario)
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_num = num_miss_approach(outcome = "ANY_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "binomial") 
+
+# View the fitted model summary
+mod_log_num$fit |> 
+  summary()
+```
+
+#### Approach 3: Best/Worst Case Imputation
+
+For each of the 10 ALI components, we can assume that the missing values would have been healthy (for the best case scenario) or unhealthy (for the worst case scenario). Then, we re-calculate the ALI as the number of unhealthy components (post-imputation) divided by 10. 
+
+```{r}
+# Replace missing ALI components with "healthy" (the best case scenario)
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_best = case_approach(outcome = "ANY_ADMIT", 
+                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                             data = hosp_dat, 
+                             family = "binomial", 
+                             best = TRUE) 
+
+# View the fitted model summary
+mod_log_best$fit |> 
+  summary()
+```
+
+The code above fits the model for the "best" case scenario. To instead fit the model for the "worst" case scenario, rather than best, simply switch the last argument in the call to the `case_approach()` function to be `best = FALSE` instead. 
+
+### Separate Component Models 
+
+#### Approach 4: Best/Worst Case Imputation (Separate)
+
+For each of the 10 ALI components, we can assume that the missing values would have been healthy (for the best case scenario) or unhealthy (for the worst case scenario). Then, we fit the model using using the original 2-level categorical variables (unhealthy/healthy) for each of the 10 components, further controlling for age and sex. To fit the separate component model via best/worst case imputation, we can use the `case_approach()` function again, with all the same arguments as in **Approach 3**, except we add `comp_sep = TRUE`. 
+
+```{r}
+# Replace missing ALI components with "healthy" (the best case scenario)
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_best_sep = case_approach(outcome = "ANY_ADMIT", 
+                                 covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                 data = hosp_dat, 
+                                 family = "binomial", 
+                                 best = TRUE, 
+                                 comp_sep = TRUE) 
+
+# View the fitted model summary
+mod_log_best_sep$fit |> 
+  summary()
+```
+
+#### Approach 5: Missingness as a Category (Separate)
+
+For each of the 10 ALI components, we can go from two levels (unhealthy/healthy) to three levels (unhealthy/healthy/missing). Then, we fit the model using a 3-level categorical variable for each of the 10 components, further controlling for age and sex.
+
+```{r}
+# Allow each ALI component to be either healthy, unhealthy, or missing
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_log_cat = miss_cat_approach(outcome = "ANY_ADMIT",
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"),
+                                data = hosp_dat,
+                                family = "binomial")
+
+# View the fitted model summary
+mod_log_cat$fit |>
+  summary()
+```
+
+## Prediction 
+
+For all approaches except multiple imputation, predicted probabilities of hospitalization can be obtained using the usual `predict()` function for a `glm` object. For example, we can predict from the **logistic regression + best case imputation** model above as: 
+
+```{r}
+# Calculate predicted probabilities from logistic regression w/ best case imputation
+pred_prob_best = mod_log_best$fit |> 
+  predict(type = "response")
+## View the first few
+pred_prob_best |> 
+  head()
+
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_prob_best)
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+## Other Models/Classifiers 
+
+### Poisson Model 
+
+For a **Poisson regression** model, using `predict(type = "response")` will obtain the predicted *count* of hospitalizations for each patient. 
+
+```{r}
+# Replace missing ALI components with "healthy" (the best case scenario)
+## and fit a model with each component separately as predictors (+ other covariates)
+mod_pois_best = case_approach(outcome = "ANY_ADMIT", 
+                              covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                              data = hosp_dat, 
+                              family = "poisson",
+                              best = TRUE) 
+
+# Calculate predicted counts from Poisson regression w/ missingness indicator
+pred_count_best = mod_pois_best$fit |> 
+  predict(type = "response")
+## View the first few
+pred_count_best |> 
+  head()
+
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_count_best)
+plot(roc_curve, 
+     col = "#CD0BBC", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+### Zero-Inflated Poisson Model
+
+Below, we demonstrate how the best-case imputation approach could be used with a zero-inflated Poisson outcome model for the count of hospitalizations. The zero inflation part of the model assumes that a patient's probability of never being hospitalized (i.e., being a *structural zero*) depends on their imputed ALI, sex, and age (the same explanatory variables as in the outcome model).
+
+```{r}
+# Replace missing ALI components with "healthy" (the best case scenario)
+mod_zip_best = case_approach(outcome = "ANY_ADMIT", 
+                             covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                             zeros = c("CASE_ALI", "SEX", "AGE_AT_ENCOUNTER"), 
+                             data = hosp_dat, 
+                             family = "poisson", 
+                             best = TRUE) 
+
+# View the fitted model summary
+mod_zip_best$fit |> 
+  summary()
+```
+
+For a **zero-inflated Poisson regression** model, using `predict(type = "response")` will obtain the predicted *count* of hospitalizations for each patient. 
+
+```{r}
+# Calculate predicted counts from ZIP regression w/ best-case imputation
+pred_count_zip_best = mod_zip_best$fit |> 
+  predict()
+## View the first few
+pred_count_zip_best |> 
+  head()
+
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, pred_count_zip_best)
+plot(roc_curve, 
+     col = "turquoise", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+### Machine Learning 
+
+If a **random forest** classifier is desired, rather than a logistic regression model, then set the `use_glm` argument to `FALSE`. For a binary outcome, we continue to let `family = "binomial"`.
+
+```{r}
+# Make random forest reproducible
+set.seed(415)
+
+# Replace missing ALI components with "healthy" (the best case scenario)
+mod_rf_best = case_approach(outcome = "ANY_ADMIT", 
+                            covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                            data = hosp_dat, 
+                            family = "binomial", 
+                            use_glm = FALSE, 
+                            best = TRUE) 
+
+# View variable importance for the fitted model (instead of coefficients)
+mod_rf_best$fit$variable.importance
+
+# View the predicted probabilities of Y = 1 and Y = 0
+mod_rf_best$fit$predictions |> 
+  head()
+
+# Make the ROC curve 
+roc_curve = pROC::roc(hosp_dat$ANY_ADMIT, mod_rf_best$fit$predictions[, 1])
+plot(roc_curve, 
+     col = "darkolivegreen2", 
+     main = "ROC Curve", 
+     print.auc = TRUE)
+```
+
+The resulting `mod_rf_best` contains two named slots. 
+
+  1.  If you call `mod_rf_best$data`, you get the `hosp_dat` object back *but* with the missingness indicators applied to the 10 ALI components. (The data used to fit the model.)
+  2.  If you call `mod_rf_best$fit`, you get the `ranger` fitted model object, which you can then use to extract information like `$variable.importance` and `$predictions`. 
+
+## Cross-Validation 
+
+To get more realistic measures of accuracy, we can evaluate the models using $k$-fold cross validation. We chose to leave this up to the user and demonstrate how the functions discussed thus far can be used to conduct $k$-fold cross validation. 
+
+```{r}
+# 5-fold cross validation of the logistic regression model with best-case imputation
+kfold_log_best = kfold_validate(outcome = "ANY_ADMIT", 
+                                covar = c("SEX", "AGE_AT_ENCOUNTER"), 
+                                data = hosp_dat, 
+                                family = "binomial", 
+                                miss_method = "best", 
+                                folds = 5)
+
+## View AUC from 5 folds 
+kfold_log_best$all_fold_auc
+median(kfold_log_best$all_fold_auc) ### summarized by median
+
+## Extract ROC curve from first fold 
+kfold_log_best |> 
+  kfold_roc(plot_folds = 1, 
+            overlay_average = FALSE, 
+            color_by_fold = FALSE) 
+
+## Plot individual ROC curves from 5 folds with median over top 
+kfold_log_best |> 
+  kfold_roc(plot_folds = 1:5, 
+            overlay_average = TRUE, 
+            color_by_fold = FALSE) 
+```
