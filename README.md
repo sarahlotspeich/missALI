@@ -21,7 +21,7 @@ library(missALI)
 
 ## Models
 
-### Logistic regression with…
+### Fit full-sample and k-fold logistic regression with…
 
 1.  [Complete-case
     proportion](analysis/logistic_regression/complete_case_proportion.R)
@@ -40,7 +40,7 @@ library(missALI)
 8.  [Pattern
     submodels](analysis/logistic_regression/pattern_submodels.R)
 
-### Random forest with…
+### Fit full-sample and k-fold random forest with…
 
 1.  [Complete-case
     proportion](analysis/random_forest/complete_case_proportion.R)
@@ -57,6 +57,14 @@ library(missALI)
 7.  [Missingness as a
     category](analysis/random_forest/missing_category.R)
 8.  [Pattern submodels](analysis/random_forest/pattern_submodels.R)
+
+### Calculate performance metrics…
+
+1.  [Custom ROC curves using \`ggplot2](analysis/full_sample_roc.R)
+2.  [Custom calibration plots and
+    slopes/intercepts](analysis/calibration_functions.R)
+3.  [Calculate all metrics and produce all
+    plots](analysis/summ_plot_predictions.R)
 
 ## Figures
 
@@ -75,6 +83,19 @@ library(missALI)
 - [Figure 3](figures/Figure3_Upset.R) Missingness upset plot displaying
   combinations of allostatic load index (ALI) components that were
   missing together for patients.
+- [Figure 4](figures/Figure4_LogReg_Metrics.R) Various performance
+  metrics for logistic regression using each missing data approach. Due
+  to very small counts for some of the separate components’ categories,
+  the missingness as a category approach could not be $5$-fold
+  cross-validated. Calibration slope and intercept were not calculated
+  for the full-sample logistic regression, since this model is almost
+  guaranteed to appear perfectly calibrated when fit and evaluated on
+  the same data.
+- [Figure 5](figures/Figure5_RF_Metrics.R) Various performance metrics
+  for random forest using each missing data approach. Due to very small
+  counts for some of the separate components’ categories, the
+  missingness as a category approach could not be $5$-fold
+  cross-validated.
 - [Supplemental Figure S1](figures/FigureS1_Boxplot_Proportion_ALIs.R)
   Distributions of the allostatic load index (ALI) for the $n = 707$
   patients in the sample from the electronic health records (EHR) at
