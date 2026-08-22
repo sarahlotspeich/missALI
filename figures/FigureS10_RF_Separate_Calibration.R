@@ -22,6 +22,6 @@ EF#G
 comb_plot = (full_best$cal + full_worst$cal + full_miss_cat$cal + full_pat_sub$cal +
                kfold_best$cal + kfold_worst$cal + kfold_pat_sub$cal) +
   plot_layout(design = design)
-ggsave(filename = "~/Documents/missALI/figures/revision_all_sep_comp_cal_log.png", 
+ggsave(filename = "~/Documents/missALI/figures/revision_all_sep_comp_cal_rf.png", 
        plot = comb_plot, 
        device = "png", width = 16, height = 10, units = "in")
