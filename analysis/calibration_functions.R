@@ -29,8 +29,8 @@ calibration_intercept_slope = function(y, p) {
 
 calibration_plot_custom = function(data, obs, pred, line_col, point_col = line_col, n_groups = 10, title = NULL, xlim = c(0, 1), ylim = c(0, 1), annotate = FALSE) {
   ## Calculate calibration intercept and slope
-  cal = calibration_intercept_slope(y = data[, obs],
-                                    p = data[, pred])
+  cal = calibration_intercept_slope(y = data[[obs]],
+                                    p = data[[pred]])
   
   # Calculate avg predicted / observed event probabilities (and 95% CIs)
   data = data |>
