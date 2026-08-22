@@ -2,6 +2,8 @@
 source("~/Documents/missALI/analysis/setup_for_random_forest_fit.R")
 
 # Random forest + worst-case imputation (separate)
+## Make bootstrap SEs reproducible (same for all models + approaches)
+set.seed(918)
 ## Full sample
 mod_log_cat = miss_cat_approach(outcome = "ANY_ADMIT",
                                 covar = c("SEX", "AGE_AT_ENCOUNTER"),

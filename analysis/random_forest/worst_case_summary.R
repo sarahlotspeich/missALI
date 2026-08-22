@@ -1,7 +1,9 @@
 # Setup data and helper functions
 source("~/Documents/missALI/analysis/setup_for_random_forest_fit.R")
 
-# Logistic regression + worst-case imputation (summary)
+# Random forest + worst-case imputation (summary)
+## Make bootstrap SEs reproducible (same for all models + approaches)
+set.seed(918)
 ## Full sample
 mod_log_worst = case_approach(outcome = "ANY_ADMIT", 
                               covar = c("SEX", "AGE_AT_ENCOUNTER"), 
@@ -23,7 +25,7 @@ saveRDS(object = out,
         file = "~/Documents/missALI/analysis/fitted_models/random_forest/full_worst_case_summary.rds")
 
 # 5-Fold Cross-Validated 
-## Make fold assignment reproducible (same for all models + approaches)
+## Make fold assignment and bootstrap SEs reproducible (same for all models + approaches)
 set.seed(918)
 ## Fit models
 kfold_log_worst = kfold_validate(outcome = "ANY_ADMIT", 
