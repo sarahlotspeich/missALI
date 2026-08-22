@@ -13,7 +13,7 @@ mod_log_prop = cc_prop_approach(outcome = "ANY_ADMIT",
                                 use_glm = FALSE) 
 
 # Create plots and calculate metrics 
-out = summ_plot_fit(
+out = summ_plot_fit_rf(
   mod = mod_log_prop, 
   col = "#2b9d8f", 
   method_title = "Complete-Case\nProportion", 
