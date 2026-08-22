@@ -4,6 +4,10 @@ hosp_dat = read.csv("~/Documents/Allostatic_load_audits/revision_analysis_dat.cs
   ## Exclude one person with no vitals/labs before hospitalization day so all components missing
   dplyr::filter(!is.na(ALI))
 
+# Define vector of binary ALI component column names
+ali_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
+             "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
+
 # Function to convert 0/1/NA into labeled factor
 make_miss_factor = function(x) {
   dplyr::case_when(

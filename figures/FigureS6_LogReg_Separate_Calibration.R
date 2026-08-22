@@ -1,21 +1,18 @@
 # Setup data and helper functions
 source("~/Documents/missALI/analysis/setup_for_logistic_regression_fit.R")
 
-# Set working directory
-setwd("~/Documents/missALI/")
-
 # Source fitted models and extract their ROC curves 
 ## Best-case imputation (separate)
-full_best = readRDS("analysis/fitted_models/logistic_regression/full_best_case_separate.rds")
-kfold_best = readRDS("analysis/fitted_models/logistic_regression/kfold_best_case_separate.rds")
+full_best = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regression/full_best_case_separate.rds")
+kfold_best = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regression/kfold_best_case_separate.rds")
 ## Worst-case imputation (separate)
-full_worst = readRDS("analysis/fitted_models/logistic_regression/full_worst_case_separate.rds")
-kfold_worst = readRDS("analysis/fitted_models/logistic_regression/kfold_worst_case_separate.rds")
+full_worst = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regression/full_worst_case_separate.rds")
+kfold_worst = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regression/kfold_worst_case_separate.rds")
 ## Missingness categories 
-full_miss_cat = readRDS("analysis/fitted_models/logistic_regression/full_missing_category.rds")
+full_miss_cat = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regression/full_missing_category.rds")
 ## Pattern submodels 
-full_pat_sub = readRDS("analysis/fitted_models/logistic_regression/full_pattern_submodels.rds")
-kfold_pat_sub = readRDS("analysis/fitted_models/logistic_regression/kfold_pattern_submodels.rds")
+full_pat_sub = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regression/full_pattern_submodels.rds")
+kfold_pat_sub = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regression/kfold_pattern_submodels.rds")
 # ROC curves for Approaches 4-6
 ## Create custom design since missingness categories doesn't have k-fold
 design = "

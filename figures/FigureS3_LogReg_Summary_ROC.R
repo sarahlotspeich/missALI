@@ -14,10 +14,9 @@ kfold_best = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regres
 ## Worst-case imputation (summary)
 full_worst = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regression/full_worst_case_summary.rds")
 kfold_worst = readRDS("~/Documents/missALI/analysis/fitted_models/logistic_regression/kfold_worst_case_summary.rds")
-# Calibration plots for Approaches 1-3b 
-
-comb_plot = (full_cc_prop$cal | full_num_miss$cal | full_best$cal | full_worst$cal) / 
-  (kfold_cc_prop$cal |  kfold_num_miss$cal | kfold_best$cal | kfold_worst$cal)
-ggsave(filename = "~/Documents/missALI/figures/revision_all_summ_meas_cal_log.png", 
+# ROC Curves for Approaches 1-3b 
+comb_plot = (full_cc_prop$roc | full_num_miss$roc | full_best$roc | full_worst$roc) / 
+  (kfold_cc_prop$roc |  kfold_num_miss$roc | kfold_best$roc | kfold_worst$roc)
+ggsave(filename = "~/Documents/missALI/figures/revision_all_summ_meas_roc_log.png", 
        plot = comb_plot, 
        device = "png", width = 16, height = 10, units = "in")

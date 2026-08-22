@@ -4,6 +4,10 @@ hosp_dat = read.csv("~/Documents/Allostatic_load_audits/revision_analysis_dat.cs
   ## Exclude one person with no vitals/labs before hospitalization day so all components missing
   dplyr::filter(!is.na(ALI))
 
+# Define vector of binary ALI component column names
+ali_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
+             "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
+
 # Transform data from wide --> long to have one row per version of ALI 
 ali_box_dat = hosp_dat |> 
   dplyr::select(PAT_MRN_ID, all_of(ali_comp)) |> 

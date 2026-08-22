@@ -5,6 +5,10 @@ hosp_dat = read.csv("~/Documents/Allostatic_load_audits/revision_analysis_dat.cs
   ## Exclude one person with no vitals/labs before hospitalization day so all components missing
   dplyr::filter(!is.na(ALI))
 
+# Define vector of binary ALI component column names
+ali_comp = c("A1C", "ALB", "BMI", "CHOL", "CRP",
+             "CREAT_C", "HCST", "TRIG", "BP_DIASTOLIC", "BP_SYSTOLIC")
+
 # Create dataframe of the missing data patterns from raw patient-level data 
 ali_miss_pat = hosp_dat |> 
   ## Create missingness indicators for each ALI component
