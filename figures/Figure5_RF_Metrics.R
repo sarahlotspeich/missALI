@@ -1,5 +1,5 @@
 # Read in metrics from model fits
-res = read.csv("~/Documents/missALI/data/logistic_regression_metrics.csv")
+res = read.csv("~/Documents/missALI/data/random_forest_metrics.csv")
 
 # Define color scheme 
 miss_meth_cols = c("#2b9d8f", "#e76f51", "#1b3c73", "#c1dbd0", 
@@ -33,13 +33,7 @@ plot_data = res |>
       labels = c("AUC", "Brier Score",
                  "Calibration Intercept", "Calibration Slope",
                  "Sensitivity", "Specificity",
-                 "PPV", "NPV"))) |> 
-  dplyr::mutate(
-    Value = dplyr::if_else(condition = Fit == "Full-\nSample" & 
-                             Metric %in% c("Calibration Intercept", "Calibration Slope"), 
-                           true = NA, 
-                           false = Value)
-  )
+                 "PPV", "NPV"))) 
 metric_plot = plot_data |>
   ggplot(aes(x = Value,
              y = Fit,
@@ -76,7 +70,7 @@ metric_plot = plot_data |>
   ) + 
   scale_shape_discrete(name = "Treatment of\nComponents")
 ggsave(
-  filename = "~/Documents/missALI/figures/revision_logreg_metric_plot.png",
+  filename = "~/Documents/missALI/figures/revision_rf_metric_plot.png",
   plot = metric_plot,
   width = 12,
   height = 10,

@@ -1,10 +1,6 @@
 # Setup 
 setwd("~/Documents/missALI/figures/")
 
-# Re-make metrics data (just in case models have been updated)
-source("~/Documents/missALI/analysis/logistic_regression_metrics.R")
-source("~/Documents/missALI/analysis/random_forest_metrics.R")
-
 # Loop over plots and generate them 
 ## one .R file per figure
 plot_scripts = grep(x = list.files(pattern = ".R"), 
