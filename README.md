@@ -68,6 +68,9 @@ library(missALI)
 
 ## Figures
 
+Scripts to remaking the following figures from the manuscript and
+supplementary materials…
+
 - [Figure 1.](figures/Figure1_Missing_Data_Patterns.R) Patterns of
   missingness in the $10$ allostatic load index (ALI) for the $n = 707$
   patients in the sample from the electronic health records (EHR) at
@@ -133,7 +136,7 @@ library(missALI)
   guaranteed to appear perfectly calibrated when fit and evaluated on
   the same data.
 - [Supplemental Figure
-  S6](figures/FigureS6_LogReg_Separate_Calibration.R)Calibration curves
+  S6](figures/FigureS6_LogReg_Separate_Calibration.R) Calibration curves
   for the four separate component models using logistic regression based
   on the full sample data (top row) and $5$-fold cross-validation
   (bottom row). The calibration intercept and slope with their $95\%$
@@ -151,18 +154,18 @@ library(missALI)
   ($95\%$ CI) are included. The missingness as a category model could
   not be $5$-fold cross-validated due to extremely rare categories,
   which would sometimes appear in the test but not train data.
-- [Supplemental Figure S8](figures/FigureS8_RF_Separate_ROC.R)Receiver
+- [Supplemental Figure S8](figures/FigureS8_RF_Separate_ROC.R) Receiver
   operating characteristic (ROC) curves for the four summary measure
   models using random forest classification based on the full sample
   data (top row) and $5$-fold cross-validation (bottom row). The area
   under the ROC curve (AUC) and its $95\%$ confidence interval
   ($95\%$ CI) are included.
-- [Supplemental Figure
-  S9](figures/FigureS9_RF_Summary_Calibration.R)Calibration curves for
-  the four summary measure models using random forest classification
-  based on the full sample data (top row) and $5$-fold cross-validation
-  (bottom row). The calibration intercept and slope with their $95\%$
-  confidence intervals ($95\%$ CIs) are included.
+- [Supplemental Figure S9](figures/FigureS9_RF_Summary_Calibration.R)
+  Calibration curves for the four summary measure models using random
+  forest classification based on the full sample data (top row) and
+  $5$-fold cross-validation (bottom row). The calibration intercept and
+  slope with their $95\%$ confidence intervals ($95\%$ CIs) are
+  included.
 - [Supplemental Figure S10](figures/FigureS10_RF_Separate_Calibration.R)
   Calibration curves for the four separate component models using random
   forest classification based on the full sample data (top row) and
