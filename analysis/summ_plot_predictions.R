@@ -3,7 +3,7 @@ summ_plot_predictions = function(obs, pred, col, method_title,
                                  model_type, missing, separate_components,
                                  fit_type, B = 10000, B_seed = 918,
                                  xlim = c(0, 1), ylim = c(0, 1),
-                                 annotate = TRUE) {
+                                 annotate = FALSE) {
   # Set seed to make bootstrap CIs reproducible
   set.seed(B_seed)
   
@@ -103,7 +103,7 @@ summ_plot_predictions = function(obs, pred, col, method_title,
 
 # Helper functions to summarize fitted model (metrics and plots)
 ## For full-sample (glm)
-summ_plot_fit_glm = function(mod, col, method_title, model_type, missing, separate_components, B = 10000, B_seed = 918) {
+summ_plot_fit_glm = function(mod, col, method_title, model_type, missing, separate_components, B = 10000, B_seed = 918, annotate = FALSE) {
   ## If missing data method was pattern submodels, use custom predict function
   if (missing == "Pattern Submodels") {
     pred_prob = mod |>
@@ -128,11 +128,11 @@ summ_plot_fit_glm = function(mod, col, method_title, model_type, missing, separa
     B_seed = B_seed,
     xlim = c(0, 0.5),
     ylim = c(0, 0.5),
-    annotate = TRUE
+    annotate = annotate
   )
 }
 ## For full-sample (random forest)
-summ_plot_fit_rf = function(mod, col, method_title, model_type, missing, separate_components, B = 10000, B_seed = 918) {
+summ_plot_fit_rf = function(mod, col, method_title, model_type, missing, separate_components, B = 10000, B_seed = 918, annotate = FALSE) {
   # Calculate predicted probabilities
   if (missing == "Pattern Submodels") {
     # Calculate predicted probabilities
@@ -158,11 +158,11 @@ summ_plot_fit_rf = function(mod, col, method_title, model_type, missing, separat
     B_seed = B_seed,
     xlim = c(0, 0.5),
     ylim = c(0, 0.5),
-    annotate = TRUE 
+    annotate = annotate 
   )
 }
 ## For K-fold cross-validated (glm or random forest)
-summ_plot_fit_kfold_pooled = function(kfold_res, col, method_title, model_type, missing, separate_components, B = 10000, xlim = c(0, 1), ylim = c(0, 1)) {
+summ_plot_fit_kfold_pooled = function(kfold_res, col, method_title, model_type, missing, separate_components, B = 10000, xlim = c(0, 1), ylim = c(0, 1), annotate = FALSE) {
   ### Pool out-of-sample predictions across all folds
   cv_dat = do.call(
     rbind,
@@ -189,6 +189,6 @@ summ_plot_fit_kfold_pooled = function(kfold_res, col, method_title, model_type, 
     B = B,
     xlim = xlim,
     ylim = ylim,
-    annotate = TRUE
+    annotate = annotate,
   )
 }
