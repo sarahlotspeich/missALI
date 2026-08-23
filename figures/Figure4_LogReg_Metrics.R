@@ -74,7 +74,9 @@ metric_plot = plot_data |>
     panel.grid.major.y = element_blank(),
     panel.grid.minor = element_blank()
   ) + 
-  scale_shape_discrete(name = "Treatment of\nComponents")
+  scale_shape_discrete(name = "Treatment of\nComponents") + 
+  scale_x_continuous(labels = scales::label_number(accuracy = 0.01), 
+                     n.breaks = 3)
 ggsave(
   filename = "~/Documents/missALI/figures/revision_logreg_metric_plot.png",
   plot = metric_plot,
