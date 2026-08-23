@@ -58,7 +58,7 @@ metrics |>
                                "npv_combined"), 
                     labels = c("AUC", "Brier Score", "Cal. Intercept", 
                                "Cal. Slope", "Threshold", "Sensitivity", 
-                               "Specifity", "PPV", "NPV"))) |> 
+                               "Specificity", "PPV", "NPV"))) |> 
   dplyr::arrange(metric, Missing) |> 
   dplyr::select(metric, Missing, dplyr::everything(), -Model, -Separate_Components) |> 
   kable(format = "latex", escape = FALSE, booktabs = TRUE)
