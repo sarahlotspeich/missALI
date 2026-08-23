@@ -1,0 +1,6 @@
+rm(list = ls())
+source("~/Documents/missALI/analysis/fit_all_logistic_regression.R")
+rm(list = ls())
+source("~/Documents/missALI/analysis/fit_all_random_forest.R")
+rm(list = ls())
+source("~/Documents/missALI/figures/make_all_plots.R")
